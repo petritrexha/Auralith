@@ -15,6 +15,7 @@ from django.core.paginator import Paginator
 from django.db.models import Count, Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
@@ -22,7 +23,7 @@ from core.agent.llm import ai_mode
 from core.agent.reporter import generate_report
 from core.forms import CreateUserForm, EditUserForm, SettingsForm
 from core.models import AnalyzeLog, Card, Concept, TeamReport, UserConcept
-from core.services import accounts, insights, knowledge
+from core.services import accounts, checklist, insights, knowledge
 
 User = get_user_model()
 
@@ -74,6 +75,18 @@ def app_home(request):
     data = insights.member_insights(request.user)
     latest = Card.objects.filter(user=request.user).select_related("concept")[:3]
     return render(request, "core/dashboard.html", {"i": data, "latest": latest})
+
+
+@login_required
+def cards_latest_json(request):
+    """Polled by open member pages so new cards from the plugin show up without a reload."""
+    card = Card.objects.filter(user=request.user).select_related("concept").first()
+    return JsonResponse({
+        "latest_id": card.pk if card else 0,
+        "concept": card.concept.name if card else "",
+        "url": reverse("card-detail", args=[card.pk]) if card else "",
+        "unread": Card.objects.filter(user=request.user, read_at__isnull=True).count(),
+    })
 
 
 @login_required
@@ -143,12 +156,45 @@ def concept_action(request, slug: str):
 
 @login_required
 def concepts(request):
-    rows = UserConcept.objects.filter(user=request.user).select_related("concept").order_by("concept__category", "concept__name")
+    rows = (
+        UserConcept.objects.filter(user=request.user).select_related("concept")
+        # Ticked checklist topics that never came up in real work live in the checklist, not the library.
+        .exclude(concept__slug__in=list(checklist.TOPICS), seen_count=0)
+        .order_by("concept__category", "concept__name")
+    )
     grouped: dict[str, list] = {}
     for uc in rows:
         grouped.setdefault(uc.concept.get_category_display(), []).append(uc)
     counts = {s: rows.filter(status=s).count() for s in UserConcept.Status.values}
-    return render(request, "core/concepts.html", {"grouped": grouped, "counts": counts})
+    known = set(knowledge.known_topic_slugs(request.user))
+    sectors = [
+        {"sector": sector, "topics": [{"topic": t, "known": t.slug in known} for t in sector.topics],
+         "known_count": sum(t.slug in known for t in sector.topics)}
+        for sector in checklist.SECTORS
+    ]
+    return render(request, "core/concepts.html", {
+        "grouped": grouped, "counts": counts, "sectors": sectors,
+        "checklist_known": len(known), "checklist_total": len(checklist.TOPICS),
+    })
+
+
+@login_required
+@require_POST
+def concept_checklist(request):
+    """Tick/untick checklist topics. JS sends one topic at a time; without JS the whole form is saved."""
+    if "topic" in request.POST:
+        slug = request.POST["topic"]
+        if slug not in checklist.TOPICS:
+            return JsonResponse({"error": "unknown topic"}, status=400)
+        known = request.POST.get("known") == "1"
+        knowledge.set_topic_known(request.user, slug, known)
+        return JsonResponse({"topic": slug, "known": known, "name": checklist.TOPICS[slug].name})
+    wanted = set(request.POST.getlist("topics")) & set(checklist.TOPICS)
+    current = set(knowledge.known_topic_slugs(request.user))
+    for slug in wanted ^ current:
+        knowledge.set_topic_known(request.user, slug, slug in wanted)
+    messages.success(request, "Checklist saved. Ticked topics won't be explained in your cards.")
+    return redirect(reverse("concepts") + "#checklist")
 
 
 @login_required

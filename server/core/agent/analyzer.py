@@ -232,6 +232,7 @@ and write short, encouraging cards that explain the concept *in their code*. You
 
 Developer skill level: {skill}
 Concepts this developer already knows or muted (never teach these): {known}
+Whole topics they ticked as known on their skill checklist (never teach anything inside these): {topics}
 Cards you may create this turn: {cards_left}
 
 How to work:
@@ -301,6 +302,7 @@ def _run_live(ctx: AnalyzeContext, deadline: float):
     system = SYSTEM_PROMPT.format(
         skill=ctx.profile.skill_level,
         known=", ".join(knowledge.known_slugs(ctx.user)) or "(none yet)",
+        topics="; ".join(knowledge.known_topic_names(ctx.user)) or "(none)",
         cards_left=ctx.cards_left,
     )
     return run_tool_loop(
@@ -343,9 +345,11 @@ def _run_mock(ctx: AnalyzeContext):
     # Teach riskier and more advanced things first, like the live agent is told to.
     candidates.sort(key=lambda c: (c[0].category in risky, level_rank[c[0].level]), reverse=True)
     for entry, ch, line in candidates:
-        status = statuses.get(entry.slug, {}).get("status")
+        info = statuses.get(entry.slug, {})
+        status = info.get("status")
         if status in ("known", "muted"):
-            run.trace.append({"type": "tool", "tool": "skip_concept", "input": {"slug": entry.slug, "reason": f"user marked it {status}"}})
+            reason = f"covered by checklist topic '{info['covered_by']}'" if info.get("covered_by") else f"user marked it {status}"
+            run.trace.append({"type": "tool", "tool": "skip_concept", "input": {"slug": entry.slug, "reason": reason}})
             continue
         if ctx.profile.skill_level == "intermediate" and entry.level == "basic":
             run.trace.append({"type": "tool", "tool": "skip_concept", "input": {"slug": entry.slug, "reason": "too basic for an intermediate developer"}})

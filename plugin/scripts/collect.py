@@ -43,24 +43,39 @@ def display_path(path: str, cwd: str) -> str:
         return path.replace("\\", "/")
 
 
+EDIT_FIELDS = ("old_string", "new_string", "content", "file_text", "edits", "new_source")
+
+
+def change_from_tool(tool_name: str, tool_input: dict, cwd: str) -> dict | None:
+    """Return {"file", "diff"} for a file-editing tool call, or None for anything else (Read, Bash, …)."""
+    if not isinstance(tool_input, dict) or not any(k in tool_input for k in EDIT_FIELDS):
+        return None
+    path = tool_input.get("file_path") or tool_input.get("notebook_path") or tool_input.get("path") or ""
+    if not path:
+        return None
+    if ll.is_secret_file(path):
+        ll.debug(f"collect: skipped secret file {path!r}")
+        return None
+    diff = build_diff(tool_name, tool_input)
+    if not diff.strip():
+        return None
+    return {"file": display_path(path, cwd), "diff": ll.scrub(diff)[: ll.MAX_DIFF_CHARS]}
+
+
 def main() -> None:
     data = ll.read_hook_input()
+    tool_name = data.get("tool_name", "")
+    ll.debug(f"collect: hook fired tool={tool_name!r} session={str(data.get('session_id'))[:8]}")
     if ll.config()["disabled"]:
         return
-    tool_input = data.get("tool_input") or {}
-    path = tool_input.get("file_path") or tool_input.get("notebook_path") or tool_input.get("path") or ""
-    if not path or ll.is_secret_file(path):
-        ll.debug(f"collect: skipped {path!r}")
+    entry = change_from_tool(tool_name, data.get("tool_input") or {}, data.get("cwd", ""))
+    if entry is None:
         return
-    diff = build_diff(data.get("tool_name", ""), tool_input)
-    if not diff.strip():
-        return
-    diff = ll.scrub(diff)[: ll.MAX_DIFF_CHARS]
+    diff = entry["diff"]
     target = ll.batch_path(data.get("session_id", "default"))
     if target.exists() and target.stat().st_size > ll.MAX_BATCH_BYTES:
         ll.debug("collect: batch full, dropping change")
         return
-    entry = {"file": display_path(path, data.get("cwd", "")), "diff": diff}
     with open(target, "a", encoding="utf-8") as fh:
         fh.write(json.dumps(entry) + "\n")
     ll.debug(f"collect: +{entry['file']} ({len(diff)} chars)")

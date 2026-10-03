@@ -7,6 +7,7 @@ from django.utils import timezone
 from django.utils.text import slugify
 
 from core.models import Concept, Profile, UserConcept
+from core.services import checklist
 
 User = get_user_model()
 
@@ -46,19 +47,58 @@ def get_or_create_concept(name: str, slug: str | None = None, category: str = "o
     return concept
 
 
+BLOCKING = [UserConcept.Status.KNOWN, UserConcept.Status.MUTED]
+
+
+def known_topic_slugs(user) -> list[str]:
+    """Checklist topics the user ticked as known."""
+    return list(
+        UserConcept.objects.filter(user=user, status=UserConcept.Status.KNOWN, concept__slug__in=list(checklist.TOPICS))
+        .values_list("concept__slug", flat=True)
+    )
+
+
 def statuses_for(user, slugs: list[str]) -> dict[str, dict]:
-    """Return {slug: {"status", "seen_count"}} for the requested slugs (missing = never seen)."""
+    """Return {slug: {"status", "seen_count"}} for the requested slugs (missing = never seen).
+
+    A concept covered by a ticked checklist topic reports "known" with `covered_by`.
+    """
     normalized = {normalize_slug(s): s for s in slugs}
     rows = UserConcept.objects.filter(user=user, concept__slug__in=list(normalized)).select_related("concept")
     found = {uc.concept.slug: {"status": uc.status, "seen_count": uc.seen_count} for uc in rows}
-    return {slug: found.get(slug, {"status": "never_seen", "seen_count": 0}) for slug in normalized}
+    topics = known_topic_slugs(user)
+    result = {}
+    for slug in normalized:
+        entry = found.get(slug, {"status": "never_seen", "seen_count": 0})
+        covering = checklist.covering_topics(slug, topics)
+        if covering and entry["status"] not in BLOCKING:
+            entry = {**entry, "status": "known", "covered_by": covering[0].name}
+        result[slug] = entry
+    return result
 
 
 def is_blocked(user, slug: str) -> bool:
-    """Known or muted concepts must never produce a card."""
-    return UserConcept.objects.filter(
-        user=user, concept__slug=normalize_slug(slug), status__in=[UserConcept.Status.KNOWN, UserConcept.Status.MUTED]
-    ).exists()
+    """Known or muted concepts, and anything inside a ticked checklist topic, must never produce a card."""
+    slug = normalize_slug(slug)
+    if UserConcept.objects.filter(user=user, concept__slug=slug, status__in=BLOCKING).exists():
+        return True
+    return bool(checklist.covering_topics(slug, known_topic_slugs(user)))
+
+
+def set_topic_known(user, topic_slug: str, known: bool) -> None:
+    """Tick / untick a checklist topic. Unticking a topic that never came up in real work removes it entirely."""
+    topic = checklist.TOPICS[topic_slug]
+    concept = get_or_create_concept(topic.name, topic.slug, checklist.SECTOR_OF[topic_slug].category)
+    if known:
+        set_status(user, concept, UserConcept.Status.KNOWN)
+        return
+    uc = UserConcept.objects.filter(user=user, concept=concept).first()
+    if uc is None:
+        return
+    if uc.seen_count == 0:
+        uc.delete()
+    else:
+        set_status(user, concept, UserConcept.Status.SEEN)
 
 
 @transaction.atomic
@@ -89,7 +129,12 @@ def set_status(user, concept: Concept, status: str) -> UserConcept:
 def known_slugs(user, limit: int = 200) -> list[str]:
     """Concepts the user already knows or muted — given to the agent so it doesn't waste a turn on them."""
     return list(
-        UserConcept.objects.filter(user=user, status__in=[UserConcept.Status.KNOWN, UserConcept.Status.MUTED])
+        UserConcept.objects.filter(user=user, status__in=BLOCKING)
+        .exclude(concept__slug__in=list(checklist.TOPICS))
         .order_by("-last_seen")
         .values_list("concept__slug", flat=True)[:limit]
     )
+
+
+def known_topic_names(user) -> list[str]:
+    return [checklist.TOPICS[s].name for s in known_topic_slugs(user)]

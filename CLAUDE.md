@@ -15,8 +15,8 @@ Differentiator vs Unvibe (unvibe.site, manual select + Cmd+U explainer): LearnLo
   - `core/agent/reporter.py` — manager agent: weekly briefing (`get_org_overview`, `get_hotspots`, `get_people_needing_support`, `get_concept_details`, `write_report`). CLI: `python manage.py team_report`.
   - `core/agent/catalog.py` — curated concepts + official doc links; drives `find_docs` and the offline **mock mode** (used when `ANTHROPIC_API_KEY` is empty or `LEARNLOOP_MOCK_AI=1`).
   - `core/agent/llm.py` — generic tool loop + usage tracking.
-  - `core/services/` — `knowledge.py` (concept slugs, statuses), `insights.py` (member/org stats, hotspots, needs_attention), `accounts.py` (admin-only account creation), `scrub.py` (keep in sync with `plugin/scripts/learnloop_common.py`).
-  - `core/api.py` — `/api/v1/ping`, `/api/v1/analyze` (Bearer token, hashed in DB, per-user hourly rate limit).
+  - `core/services/` — `knowledge.py` (concept slugs, statuses), `checklist.py` (stack checklist on /app/concepts/: sectors → topics; a ticked topic is a known Concept whose slug patterns block narrower concepts), `insights.py` (member/org stats, hotspots, needs_attention), `accounts.py` (admin-only account creation), `scrub.py` (keep in sync with `plugin/scripts/learnloop_common.py`).
+  - `core/api.py` — `/api/v1/ping`, `/api/v1/analyze` (Bearer token, hashed in DB, per-user hourly rate limit). Plugin sends `ack` (card ids it displayed); unacked recent cards are re-sent next call, so cards that finish after the plugin's 20s wait still reach the terminal.
   - Commands: `seed_demo [--reset]`, `create_member <email> [--admin]`, `team_report`.
 - `.claude-plugin/marketplace.json` — install with `/plugin marketplace add <repo path>` then `/plugin install learnloop@learnloop`.
 
@@ -25,7 +25,7 @@ Differentiator vs Unvibe (unvibe.site, manual select + Cmd+U explainer): LearnLo
 - Never store full diffs; cards keep a short scrubbed snippet. Tokens shown once, stored as SHA-256.
 - Get fresh profiles via `knowledge.get_profile(user)` — a cached `user.profile` can be stale and overwrite the token hash on `save()`.
 - Rate limit + "connected" indicator use locmem cache → single process only (switch CACHES to DB/Redis for multi-worker).
-- Run tests: `python manage.py test core` (19 tests, include a fake-Anthropic tool-loop test).
+- Run tests: `python manage.py test core` (30 tests, include a fake-Anthropic tool-loop test). Django 5.1 + Python 3.14: test-client tests error on `Context.__copy__`; upgrade to Django 5.2.8+ or run on Python 3.13.
 - Dev machine is Windows + PowerShell 5: no `&&`; activate venv with `.venv\Scripts\Activate.ps1`.
 
 ## Status (Oct 3, 2026)

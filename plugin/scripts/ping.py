@@ -31,6 +31,10 @@ def main(interactive: bool) -> int:
 
 
 if __name__ == "__main__":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")  # Windows consoles default to cp1252 and choke on the emoji
+    except Exception:
+        pass
     interactive = sys.stdin is None or sys.stdin.isatty()
     if not interactive:
         ll.read_hook_input()  # drain hook payload

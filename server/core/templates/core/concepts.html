@@ -7,6 +7,33 @@
 </div>
 <a class="btn ghost" href="{% url 'cards' %}">Explore learning cards ↗</a>
 </div>
+<section id="checklist" class="checklist" aria-labelledby="checklist-title">
+<div class="panel-heading">
+<div>
+<h2 id="checklist-title">Your stack checklist</h2>
+<p class="muted small">Tick what you already know. LearnLoop won't explain anything inside a ticked topic.</p>
+</div>
+<div class="checklist-total" aria-live="polite"><b data-checklist-count>{{ checklist_known }}</b> / {{ checklist_total }} known</div>
+</div>
+<div class="checklist-bar" aria-hidden="true"><span data-checklist-bar style="width:{% widthratio checklist_known checklist_total 100 %}%"></span></div>
+<form method="post" action="{% url 'concept-checklist' %}" data-checklist>{% csrf_token %}
+<div class="checklist-grid">{% for s in sectors %}
+<fieldset class="panel checklist-sector" data-sector>
+<legend class="sr-only">{{ s.sector.name }}</legend>
+<div class="checklist-sector-head">
+<h3 aria-hidden="true">{{ s.sector.name }}</h3>
+<span class="muted small"><span data-sector-count>{{ s.known_count }}</span>/{{ s.topics|length }}</span>
+</div>
+<p class="muted small">{{ s.sector.blurb }}</p>
+<ul class="checklist-items">{% for item in s.topics %}
+<li><label class="check"><input type="checkbox" name="topics" value="{{ item.topic.slug }}"{% if item.known %} checked{% endif %}><span>{{ item.topic.name }}</span></label></li>{% endfor %}
+</ul>
+</fieldset>{% endfor %}
+</div>
+<div class="row checklist-save" data-checklist-save><button type="submit">Save checklist</button></div>
+</form>
+</section>
+<h2 class="library-title">Concepts from your work</h2>
 <div class="row" style="margin-bottom:28px">{% for s, n in counts.items %}<span class="chip {{ s }}">{{ s }} · {{ n }}</span>{% endfor %}</div>
 <p class="muted small">New: just surfaced · Seen: encountered again · Known: marked as understood · Muted: no more explanations</p>
 {% for category, items in grouped.items %}

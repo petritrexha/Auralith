@@ -100,6 +100,8 @@ class Card(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     read_at = models.DateTimeField(null=True, blank=True)
     saved = models.BooleanField(default=False)
+    # Set when the plugin confirms it showed the card in the terminal (see api.analyze_view).
+    delivered_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["-created_at"]

@@ -11,7 +11,7 @@ from django.conf import settings
 from core.agent import analyzer
 from core.agent.reporter import generate_report
 from core.models import AnalyzeLog, Card, UserConcept
-from core.services import knowledge
+from core.services import checklist, knowledge
 from core.services.accounts import create_member
 from core.services.scrub import is_secret_file, scrub_text
 
@@ -65,6 +65,25 @@ class ApiTests(TestCase):
         r = self.post([{"file": "web/Cart2.tsx", "diff": REACT_DIFF}])
         self.assertEqual(r.json()["cards"], [])
 
+    def test_checklist_topic_blocks_narrower_concepts(self):
+        knowledge.set_topic_known(self.user, "stack-react-hooks", True)
+        r = self.post([{"file": "web/Cart.tsx", "diff": REACT_DIFF}])
+        self.assertEqual(r.json()["cards"], [])
+        skips = [s["input"]["reason"] for s in AnalyzeLog.objects.get().trace if s.get("tool") == "skip_concept"]
+        self.assertTrue(any("checklist" in reason for reason in skips), skips)
+        self.assertTrue(knowledge.is_blocked(self.user, "usereducer-for-complex-state"))
+        self.assertFalse(knowledge.is_blocked(self.user, "css-grid"))
+
+    def test_undelivered_cards_are_resent_until_acked(self):
+        card_id = self.post([{"file": "web/Cart.tsx", "diff": REACT_DIFF}]).json()["cards"][0]["id"]
+        # Plugin timed out and never acked: the next call (even a trivial one) carries the card again.
+        r = self.post([{"file": "a.py", "diff": "+x = 1"}])
+        self.assertEqual([c["id"] for c in r.json()["cards"]], [card_id])
+        body = {"session_id": "s", "changes": [{"file": "a.py", "diff": "+x = 1"}], "ack": [card_id]}
+        r = self.client.post("/api/v1/analyze", data=json.dumps(body), content_type="application/json", **self.auth)
+        self.assertEqual(r.json()["cards"], [])
+        self.assertIsNotNone(Card.objects.get(pk=card_id).delivered_at)
+
     def test_trivial_change_skipped(self):
         r = self.post([{"file": "a.py", "diff": "+x = 1"}])
         self.assertEqual(r.json()["outcome"], "trivial")
@@ -115,6 +134,20 @@ class WebTests(TestCase):
         self.assertEqual(self.client.get(f"/app/cards/{self.card.pk}").status_code, 200)
         self.client.post(f"/app/cards/{self.card.pk}/action", {"action": "known"})
         self.assertEqual(UserConcept.objects.get(user=self.a).status, "known")
+
+    def test_checklist_toggle(self):
+        self.client.login(username="a@example.com", password="pw-Alpha-123")
+        r = self.client.post("/app/concepts/checklist", {"topic": "stack-docker", "known": "1"})
+        self.assertEqual(r.json()["known"], True)
+        self.assertEqual(knowledge.known_topic_slugs(self.a), ["stack-docker"])
+        self.assertContains(self.client.get("/app/concepts/"), 'value="stack-docker" checked')
+        self.client.post("/app/concepts/checklist", {"topic": "stack-docker", "known": "0"})
+        self.assertFalse(UserConcept.objects.filter(user=self.a, concept__slug="stack-docker").exists())
+        # No-JS fallback saves the whole form.
+        self.client.post("/app/concepts/checklist", {"topics": ["stack-jwt", "stack-sql"]})
+        self.assertEqual(sorted(knowledge.known_topic_slugs(self.a)), ["stack-jwt", "stack-sql"])
+        self.assertEqual(self.client.post("/app/concepts/checklist", {"topic": "nope"}).status_code, 400)
+        self.assertEqual(self.client.get("/app/cards/latest.json").json()["latest_id"], self.card.pk)
 
     def test_members_blocked_from_manage(self):
         self.client.login(username="a@example.com", password="pw-Alpha-123")
@@ -207,3 +240,15 @@ class ReporterTests(TestCase):
         report = generate_report(days=7)
         self.assertIn("Risk hotspots", report.body_markdown)
         self.assertIn("web/src", report.body_markdown)
+
+
+class ChecklistCoverageTests(TestCase):
+    def test_patterns(self):
+        hooks = checklist.TOPICS["stack-react-hooks"]
+        for slug in ["react-usereducer", "react-useeffect-cleanup", "usestate-hook", "custom-hooks"]:
+            self.assertTrue(hooks.covers(slug), slug)
+        for slug in ["css-grid", "user-profile", "reuse-components"]:
+            self.assertFalse(hooks.covers(slug), slug)
+        self.assertTrue(checklist.TOPICS["stack-web-security"].covers("cors"))
+        self.assertFalse(checklist.TOPICS["stack-web-security"].covers("decorators"))
+        self.assertTrue(checklist.TOPICS["stack-db-performance"].covers("n-plus-one-queries"))

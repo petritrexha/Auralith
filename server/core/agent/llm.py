@@ -39,7 +39,7 @@ class AgentRun:
 def _client():
     import anthropic  # imported lazily so mock mode works without the package configured
 
-    return anthropic.Anthropic(api_key=settings.LEARNLOOP["ANTHROPIC_API_KEY"], timeout=20.0, max_retries=1)
+    return anthropic.Anthropic(api_key=settings.LEARNLOOP["ANTHROPIC_API_KEY"], timeout=20.0, max_retries=0)
 
 
 def run_tool_loop(
@@ -77,6 +77,8 @@ def run_tool_loop(
                 system=system,
                 tools=tools,
                 messages=messages,
+                # Never let one slow call blow the budget: the plugin is waiting on this response.
+                timeout=max(deadline - time.monotonic(), 2.0),
             )
         except Exception as exc:  # network, auth, overload… never crash the request
             log.warning("LLM call failed: %s", exc)

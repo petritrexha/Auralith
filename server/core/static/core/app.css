@@ -1773,3 +1773,115 @@ dialog .row button {
     scroll-behavior:auto!important;
   }
 }
+/* Stack checklist (concepts page) */
+.sr-only {
+  position:absolute;
+  width:1px;
+  height:1px;
+  overflow:hidden;
+  clip:rect(0 0 0 0);
+  white-space:nowrap;
+}
+.checklist {
+  margin-bottom:40px;
+}
+.checklist h2,.library-title {
+  margin:0 0 4px;
+  font-size:18px;
+}
+.library-title {
+  margin-bottom:14px;
+}
+.checklist .panel-heading {
+  margin-bottom:12px;
+  align-items:flex-end;
+}
+.checklist-total {
+  color:var(--muted);
+  font-size:12px;
+  white-space:nowrap;
+}
+.checklist-total b {
+  color:var(--accent);
+  font-size:20px;
+  font-variant-numeric:tabular-nums;
+}
+.checklist-bar {
+  height:4px;
+  background:var(--line);
+  border-radius:4px;
+  overflow:hidden;
+  margin-bottom:20px;
+}
+.checklist-bar span {
+  display:block;
+  height:100%;
+  background:var(--accent);
+  transition:width .3s ease;
+}
+.checklist-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(min(100%,290px),1fr));
+  gap:16px;
+}
+.checklist-sector {
+  margin:0;
+  padding:20px;
+}
+.checklist-sector-head {
+  display:flex;
+  justify-content:space-between;
+  align-items:baseline;
+}
+.checklist-sector-head h3 {
+  margin:0;
+  font-size:14px;
+}
+.checklist-sector>p {
+  margin:2px 0 12px;
+}
+.checklist-items {
+  list-style:none;
+  margin:0;
+  padding:0;
+}
+.check {
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
+  padding:7px 8px;
+  margin:0 -8px;
+  border-radius:7px;
+  cursor:pointer;
+  font-size:13px;
+  color:var(--text);
+}
+.check:hover {
+  background:#ffffff08;
+}
+.check input {
+  margin:3px 0 0;
+  width:16px;
+  height:16px;
+  flex:none;
+  padding:0;
+  cursor:pointer;
+}
+.check input:checked+span {
+  color:var(--muted);
+}
+.check input:focus-visible {
+  outline:2px solid var(--accent);
+  outline-offset:2px;
+}
+.check[aria-busy=true] {
+  opacity:.6;
+}
+.checklist-save {
+  margin-top:16px;
+}
+.toast a {
+  color:inherit;
+  text-decoration:underline;
+  margin-left:6px;
+}

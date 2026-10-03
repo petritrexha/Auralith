@@ -41,16 +41,32 @@ def state_dir() -> Path:
     return path
 
 
+def ack_path() -> Path:
+    """Ids of cards shown in the terminal, reported to the server on the next call."""
+    return state_dir().parent / "ack.json"
+
+
+def notice_path(kind: str) -> Path:
+    """Marker so one-off notices (daily limit…) are shown at most once a day."""
+    return state_dir().parent / f"notice-{kind}-{time.strftime('%Y%m%d')}"
+
+
 def batch_path(session_id: str) -> Path:
     safe = re.sub(r"[^A-Za-z0-9_\-]", "_", session_id or "default")[:80]
     return state_dir() / f"{safe}.jsonl"
 
 
 def read_hook_input() -> dict:
+    """Read the hook's JSON from stdin as UTF-8 bytes.
+
+    Windows Python would otherwise decode stdin with the legacy code page (cp1252) and crash on
+    any non-ASCII character in the code (ë, €, emoji…), silently losing the whole event.
+    """
     try:
-        raw = sys.stdin.read()
+        raw = sys.stdin.buffer.read().decode("utf-8", errors="replace")
         return json.loads(raw) if raw.strip() else {}
-    except Exception:
+    except Exception as exc:
+        debug(f"could not read hook input: {exc!r}")
         return {}
 
 
@@ -119,20 +135,30 @@ def api_call(method: str, path: str, body: dict | None = None, timeout: float = 
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             return json.loads(resp.read().decode("utf-8") or "{}")
+    except TimeoutError:  # socket.timeout is an alias since 3.10
+        return {"_timeout": True}
     except urllib.error.HTTPError as exc:
         try:
             return {"_status": exc.code, **json.loads(exc.read().decode("utf-8") or "{}")}
         except Exception:
             return {"_status": exc.code}
+    except urllib.error.URLError as exc:
+        return {"_timeout": True} if isinstance(exc.reason, TimeoutError) else None
     except Exception:
         return None
 
 
+def debug_log_path() -> Path:
+    path = Path.home() / ".learnloop"
+    path.mkdir(parents=True, exist_ok=True)
+    return path / "debug.log"
+
+
 def debug(msg: str) -> None:
-    """Opt-in log file for troubleshooting: set LEARNLOOP_DEBUG=1."""
+    """Opt-in log file for troubleshooting: set LEARNLOOP_DEBUG=1. Always at ~/.learnloop/debug.log."""
     if os.environ.get("LEARNLOOP_DEBUG"):
         try:
-            with open(state_dir().parent / "debug.log", "a", encoding="utf-8") as fh:
+            with open(debug_log_path(), "a", encoding="utf-8") as fh:
                 fh.write(f"{time.strftime('%H:%M:%S')} {msg}\n")
         except Exception:
             pass
