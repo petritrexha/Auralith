@@ -1,0 +1,18 @@
+{% extends "core/base.html" %}
+{% block content %}
+{% include "core/_manage_nav.html" %}
+<h2>Create account</h2>
+{% if created %}
+<div class="secret" style="margin-bottom:16px">
+  <b>Account created for {{ created.user.email }}.</b> Share these securely — they're shown only once.
+  <p class="mono">Temporary password: {{ created.password }}<br>Plugin token: {{ created.token }}</p>
+  <p class="muted">They'll be asked to change the password at first login.</p>
+</div>
+{% endif %}
+<div class="panel" style="max-width:520px">
+  <form method="post">{% csrf_token %}{{ form.as_p }}
+    <button type="button" class="ghost" onclick="document.getElementById('id_temp_password').value=Array.from(crypto.getRandomValues(new Uint8Array(10)),b=>'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'[b%56]).join('')+'-7'">Auto-generate password</button>
+    <button>Create account</button>
+  </form>
+</div>
+{% endblock %}

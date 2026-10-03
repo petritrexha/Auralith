@@ -1,0 +1,20 @@
+{% extends "core/base.html" %}
+{% block content %}
+<section style="padding:40px 0">
+  <h1 style="font-size:40px;margin:0 0 8px">Learn what your AI just built, while it builds it.</h1>
+  <p class="muted" style="font-size:18px;max-width:720px">Businesses are handing their code to AI agents. LearnLoop is the agent that makes sure their people still understand it — and shows managers where the gaps are.</p>
+  <p class="row"><a class="btn" href="{% url 'login' %}">Log in</a> <span class="muted">No public signup — ask your admin for an account.</span></p>
+</section>
+<section class="grid">
+  <div class="panel"><b>1 · Your agent codes</b><p class="muted">Claude Code edits files as usual. LearnLoop quietly collects the diffs (secrets scrubbed on your machine).</p></div>
+  <div class="panel"><b>2 · LearnLoop decides</b><p class="muted">A teaching agent checks what <em>you</em> already know and picks what's worth explaining — usually 0–2 things.</p></div>
+  <div class="panel"><b>3 · You get a card</b><p class="muted">A short "why it's here, in your code" card appears in the terminal and in your feed. Managers see team-wide comprehension.</p></div>
+</section>
+<section class="panel" style="margin-top:20px">
+  <pre>💡 LearnLoop · JWT refresh token rotation
+Short-lived access tokens + a long-lived refresh token that is replaced on every use.
+Here: src/auth/jwt.ts issues a new refresh token on every /refresh call.
+Read more → https://learnloop.example/app/cards/41</pre>
+</section>
+<p class="muted" style="margin-top:28px;font-size:13px">Privacy: code diffs leave your machine and are sent to your company's LearnLoop server and to Anthropic's API for analysis. Secret files and common credential patterns are removed before anything is sent; only a short snippet is stored per card.</p>
+{% endblock %}

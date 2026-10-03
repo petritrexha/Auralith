@@ -1,0 +1,10 @@
+{% extends "core/base.html" %}
+{% block content %}
+{% include "core/_manage_nav.html" %}
+<h2>Org concepts</h2>
+<div class="panel"><table>
+  <tr><th>Concept</th><th>Category</th><th>Users exposed</th><th>Mastered</th><th>Mastery rate</th></tr>
+  {% for r in rows %}<tr><td>{{ r.name }}</td><td class="muted">{{ r.get_category_display }}</td><td>{{ r.exposed }}</td><td>{{ r.mastered }}</td><td>{{ r.mastery_rate }}%</td></tr>
+  {% empty %}<tr><td colspan="5" class="muted">No concepts yet.</td></tr>{% endfor %}
+</table></div>
+{% endblock %}

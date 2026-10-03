@@ -1,0 +1,15 @@
+{% extends "core/base.html" %}
+{% load learnloop %}
+{% block content %}
+{% include "core/_manage_nav.html" %}
+<div class="panel">
+  <h2 style="margin-top:0">{{ report.title }}</h2>
+  <p class="muted">Last {{ report.period_days }} days · <span class="chip">{{ report.mode }}</span> · {{ report.created_at }}</p>
+  {{ report.body_markdown|markdown_lite }}
+</div>
+{% if report.trace %}
+<details class="panel" style="margin-top:14px"><summary>Agent trace ({{ report.trace|length }} steps)</summary>
+  <pre>{% for step in report.trace %}{{ step }}
+{% endfor %}</pre></details>
+{% endif %}
+{% endblock %}

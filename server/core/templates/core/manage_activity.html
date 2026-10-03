@@ -1,0 +1,19 @@
+{% extends "core/base.html" %}
+{% block content %}
+{% include "core/_manage_nav.html" %}
+<h2>Agent activity</h2>
+<p class="muted">Every time a coding session ends a turn, the teaching agent decides what to teach. Here is what it looked at and why.</p>
+{% for log in logs %}
+<details class="panel" style="margin-bottom:10px">
+  <summary class="row">
+    <b>{{ log.user.email }}</b>
+    <span class="chip">{{ log.mode }}</span><span class="chip {% if log.outcome == 'ok' %}known{% else %}seen{% endif %}">{{ log.outcome }}</span>
+    <span class="muted">{{ log.files_count }} files · {{ log.concepts_found }} concepts considered · {{ log.cards_returned }} cards · {{ log.llm_calls }} LLM calls · {{ log.duration_ms }} ms · {{ log.created_at|timesince }} ago</span>
+  </summary>
+  <table>{% for step in log.trace %}<tr>
+    <td style="width:140px"><span class="chip">{% if step.tool %}{{ step.tool }}{% else %}{{ step.type }}{% endif %}</span></td>
+    <td class="mono" style="font-size:12px">{% if step.text %}{{ step.text }}{% elif step.reason %}{{ step.reason }}{% else %}{{ step.input }}{% if step.result %} → {{ step.result }}{% endif %}{% endif %}{% if step.skipped_secret_files %}skipped secret files: {{ step.skipped_secret_files|join:", " }}{% endif %}</td>
+  </tr>{% empty %}<tr><td class="muted">No steps (skipped before the agent ran).</td></tr>{% endfor %}</table>
+</details>
+{% empty %}<div class="panel muted">No activity yet.</div>{% endfor %}
+{% endblock %}

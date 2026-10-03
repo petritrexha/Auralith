@@ -1,0 +1,22 @@
+{
+  "name": "learnloop",
+  "displayName": "LearnLoop",
+  "version": "0.1.0",
+  "description": "Learn what your AI just built, while it builds it. Shows short 'why it's here' cards for concepts new to you after each agent turn.",
+  "author": { "name": "LearnLoop team" },
+  "license": "MIT",
+  "keywords": ["learning", "education", "comprehension", "teams"],
+  "userConfig": {
+    "server_url": {
+      "type": "string",
+      "title": "LearnLoop server URL",
+      "description": "Your company's LearnLoop server, e.g. https://learnloop.yourcompany.com (shown on the Setup page)."
+    },
+    "api_token": {
+      "type": "string",
+      "title": "LearnLoop token",
+      "description": "Your personal plugin token from the LearnLoop Setup page.",
+      "sensitive": true
+    }
+  }
+}

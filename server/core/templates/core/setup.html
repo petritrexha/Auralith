@@ -1,0 +1,47 @@
+{% extends "core/base.html" %}
+{% block content %}
+<h2>Set up the Claude Code plugin</h2>
+<p class="muted">About 3 minutes. Code diffs leave your machine: they go to this LearnLoop server and to Anthropic's API. Secret files (.env, keys) and common credential patterns are removed on your machine first, and only a short snippet is stored per card.</p>
+
+<div class="panel" style="margin-bottom:12px"><b>1 · Your token</b>
+  {% if new_token %}
+    <p>Copy it now — it won't be shown again.</p>
+    <div class="secret mono" id="tok">{{ new_token }}</div>
+    <p><button onclick="navigator.clipboard.writeText(document.getElementById('tok').textContent.trim())">Copy token</button></p>
+  {% else %}
+    <p>Your current token starts with <code>{{ profile.token_prefix|default:"(none)" }}…</code>. Tokens are stored hashed, so we can't show it again. Lost it? Make a new one (the old one stops working):</p>
+    <form method="post" action="{% url 'regenerate-token' %}">{% csrf_token %}<button>Generate new token</button></form>
+  {% endif %}
+</div>
+
+<div class="panel" style="margin-bottom:12px"><b>2 · Install the plugin</b>
+<p>In Claude Code, add the LearnLoop marketplace and install the plugin (use your team's repo URL or local folder):</p>
+<pre>/plugin marketplace add &lt;path-or-git-url-of-the-learnloop-repo&gt;
+/plugin install learnloop@learnloop</pre>
+<p>Claude Code will ask for the <b>server URL</b> and your <b>token</b> when you enable it:</p>
+<pre>Server URL: {{ server_url }}
+Token:      (the token from step 1)</pre>
+<p class="muted">Prefer environment variables? Set <code>LEARNLOOP_URL={{ server_url }}</code> and <code>LEARNLOOP_TOKEN=…</code> in your shell profile instead. For local development: <code>claude --plugin-dir ./plugin</code>.</p>
+</div>
+
+<div class="panel" style="margin-bottom:12px"><b>3 · Test the connection</b>
+  <p>Start a new Claude Code session (the plugin pings on start), then click:</p>
+  <p class="row"><button id="test">Test connection</button> <span id="status" class="muted">{% if last_ping %}Last seen {{ last_ping|timesince }} ago{% else %}Not connected yet{% endif %}</span></p>
+</div>
+
+<div class="panel"><b>4 · Code as usual, then train it</b>
+  <p>When the agent finishes a turn and something new came up, a LearnLoop card appears in the terminal and in <a href="{% url 'cards' %}">your feed</a>. Mark cards "I know this" or "Mute" so it stops repeating itself.</p>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById("test").addEventListener("click", async () => {
+  const el = document.getElementById("status");
+  el.textContent = "Checking…";
+  const r = await fetch("{% url 'app-setup-status' %}");
+  const d = await r.json();
+  el.textContent = d.connected ? "✅ Connected — the plugin talked to the server " + new Date(d.last_ping).toLocaleTimeString()
+                               : "⚠️ No recent ping. Start a new Claude Code session, then try again.";
+});
+</script>
+{% endblock %}

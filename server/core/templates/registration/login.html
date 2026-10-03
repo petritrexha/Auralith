@@ -1,0 +1,15 @@
+{% extends "core/base.html" %}
+{% block title %}Log in · LearnLoop{% endblock %}
+{% block content %}
+<div class="panel" style="max-width:420px;margin:40px auto">
+  <h2 style="margin-top:0">Log in</h2>
+  <form method="post">{% csrf_token %}
+    {{ form.non_field_errors }}
+    <p><label for="id_username">Email</label>{{ form.username }}</p>
+    <p><label for="id_password">Password</label>{{ form.password }}</p>
+    <input type="hidden" name="next" value="{{ next }}">
+    <button>Log in</button>
+  </form>
+  <p class="muted" style="font-size:13px">No account? Ask your admin.</p>
+</div>
+{% endblock %}

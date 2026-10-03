@@ -1,0 +1,18 @@
+{% extends "core/base.html" %}
+{% block content %}
+<h2>Card feed</h2>
+<form class="row" method="get" style="margin-bottom:14px">
+  <input name="q" value="{{ q }}" placeholder="Search concept, text or file">
+  <select name="category"><option value="">All categories</option>{% for v, l in categories %}<option value="{{ v }}" {% if v == category %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+  <select name="status"><option value="">All</option><option value="unread" {% if status == "unread" %}selected{% endif %}>Unread</option><option value="saved" {% if status == "saved" %}selected{% endif %}>Saved</option></select>
+  <button>Filter</button>
+</form>
+<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
+  {% for card in page %}{% include "core/_card.html" %}{% empty %}<div class="panel muted">No cards match.</div>{% endfor %}
+</div>
+<p class="row" style="margin-top:16px">
+  {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}&q={{ q }}&category={{ category }}&status={{ status }}">← Newer</a>{% endif %}
+  <span class="muted">Page {{ page.number }} / {{ page.paginator.num_pages }}</span>
+  {% if page.has_next %}<a href="?page={{ page.next_page_number }}&q={{ q }}&category={{ category }}&status={{ status }}">Older →</a>{% endif %}
+</p>
+{% endblock %}

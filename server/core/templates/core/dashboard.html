@@ -1,0 +1,31 @@
+{% extends "core/base.html" %}
+{% load learnloop %}
+{% block content %}
+<h2>Your learning</h2>
+<div class="grid">
+  <div class="panel stat"><b>{{ i.surfaced }}</b><span>concepts surfaced</span></div>
+  <div class="panel stat"><b>{{ i.known }}</b><span>known</span></div>
+  <div class="panel stat"><b>{{ i.mastery_rate|pct }}</b><span>mastery rate</span></div>
+  <div class="panel stat"><b>{{ i.comprehension_debt }}</b><span>comprehension debt</span></div>
+  <div class="panel stat"><b>{{ i.streak }}🔥</b><span>day streak</span></div>
+</div>
+<div class="panel" style="margin-top:14px"><canvas id="perDay" height="90"></canvas></div>
+<div class="grid" style="margin-top:14px">
+  <div class="panel"><b>Keeps showing up</b>
+    <ul>{% for c in i.keeps_showing_up %}<li>{{ c.concept__name }} <span class="muted">×{{ c.seen_count }}</span></li>{% empty %}<li class="muted">Nothing yet.</li>{% endfor %}</ul></div>
+  <div class="panel"><b>Recently learned</b>
+    <ul>{% for c in i.recently_learned %}<li>{{ c.concept__name }}</li>{% empty %}<li class="muted">Mark a card "I know this" to see it here.</li>{% endfor %}</ul></div>
+</div>
+<h3>Latest cards</h3>
+<div class="grid">{% for card in latest %}{% include "core/_card.html" %}{% empty %}<div class="panel muted">No cards yet. Go code something — we'll catch the interesting parts. (Not set up? <a href="{% url 'app-setup' %}">Setup guide</a>)</div>{% endfor %}</div>
+{{ i.cards_per_day|json_script:"per-day-data" }}
+{% endblock %}
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+  const d = JSON.parse(document.getElementById("per-day-data").textContent);
+  if (window.Chart) new Chart(document.getElementById("perDay"), {type:"bar",
+    data:{labels:d.map(x=>x.date.slice(5)), datasets:[{label:"Cards per day", data:d.map(x=>x.count), backgroundColor:"#7c9cff"}]},
+    options:{plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true, ticks:{precision:0}}}}});
+</script>
+{% endblock %}

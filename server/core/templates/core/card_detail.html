@@ -1,0 +1,25 @@
+{% extends "core/base.html" %}
+{% block title %}{{ card.concept.name }} · LearnLoop{% endblock %}
+{% block content %}
+<p><a href="{% url 'cards' %}">← All cards</a></p>
+<div class="panel">
+  <div class="row"><h2 style="margin:0">{{ card.concept.name }}</h2><span class="chip">{{ card.concept.get_category_display }}</span>
+    {% if uc %}<span class="chip {{ uc.status }}">{{ uc.get_status_display }}</span>{% endif %}</div>
+  <p>{{ card.summary }}</p>
+  <div class="why"><b>Why it's here</b><p style="margin:6px 0">{{ card.why_here }}</p>
+    {% if card.code_snippet %}<div class="muted mono" style="font-size:12px">{{ card.file_path }}</div><pre>{{ card.code_snippet }}</pre>{% endif %}
+  </div>
+  {% if card.diagram_mermaid %}<pre class="mermaid" style="background:#fff;color:#000">{{ card.diagram_mermaid }}</pre>{% endif %}
+  {% if card.doc_url %}<p>📚 <a href="{{ card.doc_url }}" target="_blank" rel="noopener">Read the docs</a></p>{% endif %}
+  <form method="post" action="{% url 'card-action' card.pk %}" class="row">{% csrf_token %}
+    <button name="action" value="known">I know this</button>
+    <button class="ghost" name="action" value="mute">Mute</button>
+    {% if card.saved %}<button class="ghost" name="action" value="unsave">Unsave</button>{% else %}<button class="ghost" name="action" value="save">Save</button>{% endif %}
+  </form>
+  <p class="muted" style="font-size:12px">Created {{ card.created_at }} · session {{ card.session_id|default:"–"|truncatechars:14 }}</p>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>if (window.mermaid) mermaid.initialize({startOnLoad:true});</script>
+{% endblock %}

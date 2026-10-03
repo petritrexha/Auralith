@@ -1,0 +1,14 @@
+{
+  "name": "learnloop",
+  "description": "LearnLoop: explains what your AI coding agent just built, for teams adopting AI agents.",
+  "owner": {
+    "name": "LearnLoop team"
+  },
+  "plugins": [
+    {
+      "name": "learnloop",
+      "source": "./plugin",
+      "description": "Learn what your AI just built, while it builds it."
+    }
+  ]
+}

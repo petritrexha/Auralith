@@ -1,0 +1,9 @@
+<div class="panel">
+  <div class="row"><a href="{% url 'card-detail' card.pk %}"><b>{{ card.concept.name }}</b></a>
+    <span class="chip">{{ card.concept.get_category_display }}</span>
+    {% if not card.read_at %}<span class="chip new">unread</span>{% endif %}
+    {% if card.saved %}<span class="chip">saved</span>{% endif %}
+  </div>
+  <p class="muted" style="margin:8px 0 4px">{{ card.summary|truncatechars:180 }}</p>
+  <span class="muted mono" style="font-size:12px">{{ card.file_path }} · {{ card.created_at|timesince }} ago</span>
+</div>

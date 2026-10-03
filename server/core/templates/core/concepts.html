@@ -1,0 +1,18 @@
+{% extends "core/base.html" %}
+{% block content %}
+<h2>Knowledge profile</h2>
+<p class="row">{% for s, n in counts.items %}<span class="chip {{ s }}">{{ s }} · {{ n }}</span>{% endfor %}</p>
+{% for category, items in grouped.items %}
+<div class="panel" style="margin-bottom:12px"><b>{{ category }}</b>
+  <table><tr><th>Concept</th><th>Status</th><th>Seen</th><th>Last seen</th><th></th></tr>
+  {% for uc in items %}<tr>
+    <td>{{ uc.concept.name }}</td><td><span class="chip {{ uc.status }}">{{ uc.status }}</span></td>
+    <td>{{ uc.seen_count }}</td><td class="muted">{{ uc.last_seen|timesince }} ago</td>
+    <td><form method="post" action="{% url 'concept-action' uc.concept.slug %}" class="row">{% csrf_token %}
+      {% if uc.status != "known" %}<button name="status" value="known">Known</button>{% endif %}
+      {% if uc.status != "muted" %}<button class="ghost" name="status" value="muted">Mute</button>{% endif %}
+      {% if uc.status == "known" or uc.status == "muted" %}<button class="ghost" name="status" value="seen">Reset</button>{% endif %}
+    </form></td></tr>{% endfor %}
+  </table></div>
+{% empty %}<div class="panel muted">No concepts yet. Go code something — we'll catch the interesting parts.</div>{% endfor %}
+{% endblock %}

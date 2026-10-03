@@ -1,0 +1,21 @@
+{% extends "core/base.html" %}
+{% block content %}
+{% include "core/_manage_nav.html" %}
+<div class="row"><h2>Users</h2><a class="btn" href="{% url 'manage-user-new' %}" style="margin-left:auto">Create account</a></div>
+<form class="row" method="get" style="margin-bottom:12px">
+  <input name="q" value="{{ q }}" placeholder="Search name or email">
+  <select name="role"><option value="">Any role</option><option value="member" {% if role == "member" %}selected{% endif %}>Member</option><option value="admin" {% if role == "admin" %}selected{% endif %}>Admin</option></select>
+  <select name="status"><option value="">Any status</option><option value="active" {% if status == "active" %}selected{% endif %}>Active</option><option value="disabled" {% if status == "disabled" %}selected{% endif %}>Disabled</option></select>
+  <button>Filter</button>
+</form>
+<div class="panel"><table>
+  <tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last active</th><th>Cards</th><th>Mastered</th></tr>
+  {% for u in users %}<tr>
+    <td><a href="{% url 'manage-user' u.pk %}">{{ u.get_full_name|default:u.username }}</a></td><td class="muted">{{ u.email }}</td>
+    <td><span class="chip">{% if u.is_staff %}admin{% else %}member{% endif %}</span></td>
+    <td>{% if u.is_active %}<span class="chip known">active</span>{% else %}<span class="chip muted">disabled</span>{% endif %}</td>
+    <td class="muted">{% if u.profile.last_active_at %}{{ u.profile.last_active_at|timesince }} ago{% else %}never{% endif %}</td>
+    <td>{{ u.cards_received }}</td><td>{{ u.mastered }}</td></tr>
+  {% empty %}<tr><td colspan="7" class="muted">No users.</td></tr>{% endfor %}
+</table></div>
+{% endblock %}

@@ -1,0 +1,53 @@
+{% extends "core/base.html" %}
+{% load learnloop %}
+{% block content %}
+{% include "core/_manage_nav.html" %}
+<h2>Team comprehension <span class="chip">AI: {{ ai_mode }}</span></h2>
+<div class="grid">
+  <div class="panel stat"><b>{{ o.active_users_7d }} / {{ o.members }}</b><span>active this week</span></div>
+  <div class="panel stat"><b>{{ o.cards_period }}</b><span>cards (30 days)</span></div>
+  <div class="panel stat"><b>{{ o.org_mastery_rate|pct }}</b><span>org mastery rate</span></div>
+  <div class="panel stat"><b>{{ o.comprehension_debt }}</b><span>comprehension debt</span></div>
+  <div class="panel stat"><b>${{ o.cost.approx_usd }}</b><span>AI cost · {{ o.cost.llm_calls }} calls</span></div>
+</div>
+
+<div class="panel" style="margin-top:14px">
+  <div class="row"><b>Latest briefing</b>
+    <form method="post" action="{% url 'manage-reports' %}" style="margin-left:auto">{% csrf_token %}<button>Generate this week's briefing</button></form></div>
+  {% if report %}<p><a href="{% url 'manage-report' report.pk %}">{{ report.title }}</a> <span class="muted">· {{ report.created_at|timesince }} ago</span></p>
+  {% else %}<p class="muted">No briefing yet.</p>{% endif %}
+</div>
+
+<div class="panel" style="margin-top:14px"><b>Risk hotspots — where AI-written code is least understood</b>
+  <table><tr><th>Area</th><th>Concepts</th><th>Understood</th><th>People exposed</th><th>Top concepts</th></tr>
+  {% for h in o.hotspots %}<tr><td class="mono">{{ h.area }}</td><td>{{ h.cards }}</td><td>{{ h.understood_rate|pct }}</td>
+    <td>{{ h.people_exposed }}{% if h.single_point_of_knowledge %} <span class="chip seen">1 person knows it</span>{% endif %}</td>
+    <td class="muted">{{ h.top_concepts|join:", " }}</td></tr>
+  {% empty %}<tr><td colspan="5" class="muted">No data yet.</td></tr>{% endfor %}</table>
+</div>
+
+<div class="grid" style="margin-top:14px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr))">
+  <div class="panel"><b>Your team keeps hitting…</b>
+    <table><tr><th>Concept</th><th>Exposed</th><th>Mastered</th></tr>
+    {% for c in o.most_common_concepts %}<tr><td>{{ c.name }}</td><td>{{ c.exposed }}</td><td>{{ c.mastery_rate|pct }}</td></tr>
+    {% empty %}<tr><td colspan="3" class="muted">No data yet.</td></tr>{% endfor %}</table></div>
+  <div class="panel"><b>Could use support</b>
+    <table><tr><th>Member</th><th>Mastery</th><th>Open concepts</th></tr>
+    {% for p in o.needs_attention %}<tr><td><a href="{% url 'manage-user' p.user_id %}">{{ p.name }}</a></td><td>{{ p.mastery_rate|pct }}</td><td class="muted">{{ p.open_concepts|join:", " }}</td></tr>
+    {% empty %}<tr><td colspan="3" class="muted">Everyone's keeping up.</td></tr>{% endfor %}</table></div>
+</div>
+
+<div class="panel" style="margin-top:14px"><b>Exposure vs mastery by category</b><canvas id="cats" height="90"></canvas></div>
+{{ o.by_category|json_script:"cat-data" }}
+{% endblock %}
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+  const c = JSON.parse(document.getElementById("cat-data").textContent);
+  if (window.Chart) new Chart(document.getElementById("cats"), {type:"bar",
+    data:{labels:c.map(x=>x.category), datasets:[
+      {label:"Exposed", data:c.map(x=>x.exposed), backgroundColor:"#3a4a7a"},
+      {label:"Mastered", data:c.map(x=>x.mastered), backgroundColor:"#7c9cff"}]},
+    options:{scales:{y:{beginAtZero:true, ticks:{precision:0}}}}});
+</script>
+{% endblock %}
