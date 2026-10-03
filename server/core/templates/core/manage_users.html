@@ -1,21 +1,59 @@
 {% extends "core/base.html" %}
 {% block content %}
 {% include "core/_manage_nav.html" %}
-<div class="row"><h2>Users</h2><a class="btn" href="{% url 'manage-user-new' %}" style="margin-left:auto">Create account</a></div>
-<form class="row" method="get" style="margin-bottom:12px">
-  <input name="q" value="{{ q }}" placeholder="Search name or email">
-  <select name="role"><option value="">Any role</option><option value="member" {% if role == "member" %}selected{% endif %}>Member</option><option value="admin" {% if role == "admin" %}selected{% endif %}>Admin</option></select>
-  <select name="status"><option value="">Any status</option><option value="active" {% if status == "active" %}selected{% endif %}>Active</option><option value="disabled" {% if status == "disabled" %}selected{% endif %}>Disabled</option></select>
-  <button>Filter</button>
+<div class="page-heading">
+<div>
+<div class="eyebrow">THE PEOPLE BEHIND THE CODE</div>
+<h1>People</h1>
+<p class="muted">Manage access and help your team build lasting understanding.</p>
+</div>
+<a class="btn" href="{% url 'manage-user-new' %}">+ Create account</a>
+</div>
+<form class="filter-bar" method="get" aria-label="Filter people">
+  <input type="search" aria-label="Search people" name="q" value="{{ q }}" placeholder="Search name or email">
+  <select name="role" aria-label="Role">
+<option value="">Any role</option>
+<option value="member" {% if role == "member" %}selected{% endif %}>Member</option>
+<option value="admin" {% if role == "admin" %}selected{% endif %}>Admin</option>
+</select>
+  <select name="status" aria-label="Account status">
+<option value="">Any status</option>
+<option value="active" {% if status == "active" %}selected{% endif %}>Active</option>
+<option value="disabled" {% if status == "disabled" %}selected{% endif %}>Disabled</option>
+</select>
+  <button>Apply filters</button>{% if q or role or status %}<a class="small" href="{% url 'manage-users' %}">Clear</a>{% endif %}
 </form>
-<div class="panel"><table>
-  <tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last active</th><th>Cards</th><th>Mastered</th></tr>
-  {% for u in users %}<tr>
-    <td><a href="{% url 'manage-user' u.pk %}">{{ u.get_full_name|default:u.username }}</a></td><td class="muted">{{ u.email }}</td>
-    <td><span class="chip">{% if u.is_staff %}admin{% else %}member{% endif %}</span></td>
+<div class="panel">
+<div class="table-wrap">
+<table>
+  <tr>
+<th scope="col">Name</th>
+<th scope="col">Email</th>
+<th scope="col">Role</th>
+<th scope="col">Status</th>
+<th scope="col">Last active</th>
+<th scope="col">Cards</th>
+<th scope="col">Mastered</th>
+</tr>
+  {% for u in users %}
+<tr>
+    <td>
+<a href="{% url 'manage-user' u.pk %}">{{ u.get_full_name|default:u.username }}</a>
+</td>
+<td class="muted">{{ u.email }}</td>
+    <td>
+<span class="chip">{% if u.is_staff %}admin{% else %}member{% endif %}</span>
+</td>
     <td>{% if u.is_active %}<span class="chip known">active</span>{% else %}<span class="chip muted">disabled</span>{% endif %}</td>
     <td class="muted">{% if u.profile.last_active_at %}{{ u.profile.last_active_at|timesince }} ago{% else %}never{% endif %}</td>
-    <td>{{ u.cards_received }}</td><td>{{ u.mastered }}</td></tr>
-  {% empty %}<tr><td colspan="7" class="muted">No users.</td></tr>{% endfor %}
-</table></div>
+    <td>{{ u.cards_received }}</td>
+<td>{{ u.mastered }}</td>
+</tr>
+  {% empty %}
+<tr>
+<td colspan="7" class="muted">No people match these filters. Clear your filters or create an account to get started.</td>
+</tr>{% endfor %}
+</table>
+</div>
+</div>
 {% endblock %}

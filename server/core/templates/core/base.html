@@ -1,62 +1,145 @@
 {% load static %}<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}LearnLoop{% endblock %}</title>
-  {# Placeholder styling only — the UI team owns the real design system. #}
-  <style>
-    :root { --bg:#0b0d12; --panel:#13161e; --line:#232836; --text:#e6e8ee; --muted:#8b93a7; --accent:#7c9cff; --ok:#3ecf8e; --warn:#f5a524; --bad:#f46a6a; }
-    * { box-sizing:border-box; }
-    body { margin:0; background:var(--bg); color:var(--text); font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif; }
-    a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:underline; }
-    code, pre, .mono { font-family:ui-monospace,"Cascadia Code",Menlo,monospace; font-size:13px; }
-    pre { background:#0f1218; border:1px solid var(--line); border-radius:8px; padding:12px; overflow:auto; }
-    header { display:flex; gap:18px; align-items:center; padding:14px 24px; border-bottom:1px solid var(--line); flex-wrap:wrap; }
-    header .brand { font-weight:700; color:var(--text); } header nav { display:flex; gap:14px; flex-wrap:wrap; } header .right { margin-left:auto; display:flex; gap:12px; align-items:center; }
-    main { max-width:1080px; margin:0 auto; padding:28px 16px 64px; }
-    .grid { display:grid; gap:14px; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); }
-    .panel { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; }
-    .stat b { display:block; font-size:28px; } .stat span { color:var(--muted); font-size:13px; }
-    .muted { color:var(--muted); } .chip { display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid var(--line); font-size:12px; color:var(--muted); }
-    .chip.new { color:var(--accent); border-color:var(--accent); } .chip.seen { color:var(--warn); border-color:var(--warn); } .chip.known { color:var(--ok); border-color:var(--ok); } .chip.muted { opacity:.6; }
-    .why { border-left:3px solid var(--accent); background:#121a2e; padding:10px 14px; border-radius:6px; }
-    table { width:100%; border-collapse:collapse; } th, td { text-align:left; padding:8px; border-bottom:1px solid var(--line); vertical-align:top; } th { color:var(--muted); font-weight:500; font-size:13px; }
-    button, .btn { background:var(--accent); color:#0b0d12; border:0; border-radius:8px; padding:7px 12px; font-weight:600; cursor:pointer; font-size:14px; }
-    .btn.ghost, button.ghost { background:transparent; color:var(--text); border:1px solid var(--line); }
-    input, select, textarea { background:#0f1218; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:7px 10px; font:inherit; }
-    form p { margin:0 0 12px; } label { display:block; color:var(--muted); font-size:13px; margin-bottom:4px; }
-    .messages { list-style:none; padding:0; } .messages li { background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--ok); padding:10px 14px; border-radius:8px; margin-bottom:8px; }
-    .errorlist { color:var(--bad); padding-left:18px; margin:4px 0; }
-    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-    .secret { background:#1d1a0f; border:1px solid var(--warn); border-radius:8px; padding:12px; word-break:break-all; }
-  </style>
-  {% block head %}{% endblock %}
-</head>
-<body>
-<header>
-  <a class="brand" href="{% url 'landing' %}">💡 LearnLoop</a>
-  {% if user.is_authenticated %}
-  <nav>
-    <a href="{% url 'app-home' %}">Dashboard</a>
-    <a href="{% url 'cards' %}">Cards</a>
-    <a href="{% url 'concepts' %}">Concepts</a>
-    <a href="{% url 'app-setup' %}">Setup</a>
-    <a href="{% url 'app-settings' %}">Settings</a>
-    {% if user.is_staff %}<a href="{% url 'manage-home' %}">Manage</a>{% endif %}
-  </nav>
-  <div class="right">
-    <span class="muted">{{ user.email }}</span>
-    <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="ghost">Log out</button></form>
-  </div>
-  {% else %}
-  <div class="right"><a class="btn" href="{% url 'login' %}">Log in</a></div>
-  {% endif %}
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#101313">
+<title>{% block title %}LearnLoop · Your learning workspace{% endblock %}</title>
+<link rel="icon" href="{% static 'core/mark.svg' %}" type="image/svg+xml">
+<link rel="stylesheet" href="{% static 'core/app.css' %}">
+<link rel="stylesheet" href="{% static 'core/motion.css' %}">
+<script src="{% static 'core/motion.js' %}" defer></script><script src="{% static 'core/app.js' %}" defer></script><noscript><style>@media(max-width:850px){.sidebar{position:static;transform:none;width:auto;max-height:none}.sidebar-bottom{padding-top:10px}.mobile-toggle,.search-trigger,[data-open-search]{display:none}}</style></noscript>{% block head %}{% endblock %}</head>
+<body class="{% if user.is_authenticated %}workspace{% else %}public{% endif %}">
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="ambient-scene" aria-hidden="true"><div class="ambient-grid"></div></div>
+{% if user.is_authenticated %}
+<aside class="sidebar" id="sidebar" aria-label="Workspace navigation">
+<a class="brand" href="{% url 'app-home' %}">
+<span class="brand-mark" aria-hidden="true">
+</span>LearnLoop<span class="brand-dot">.</span>
+</a>
+<div class="workspace-label">
+<span class="workspace-icon">L</span>
+<span>Learning workspace<small>Personal & team learning</small>
+</span>
+</div>
+<button class="search-trigger ghost" data-open-search>
+<span aria-hidden="true">⌕</span> Search anything <kbd>Ctrl K</kbd>
+</button>
+<p class="nav-label">WORKSPACE</p>
+<nav class="side-nav" aria-label="Learning">
+<a href="{% url 'app-home' %}" data-nav>
+<span aria-hidden="true">◫</span>Overview</a>
+<a href="{% url 'cards' %}" data-nav>
+<span aria-hidden="true">▤</span>Learning feed</a>
+<a href="{% url 'concepts' %}" data-nav>
+<span aria-hidden="true">◇</span>Concept library</a>
+<a href="{% url 'app-setup' %}" data-nav>
+<span aria-hidden="true">⌘</span>Integration</a>
+</nav>
+{% if user.is_staff %}<p class="nav-label">ORGANIZATION</p>
+<nav class="side-nav" aria-label="Administration">
+<a href="{% url 'manage-home' %}" data-nav>
+<span aria-hidden="true">▦</span>Team overview</a>
+<a href="{% url 'manage-users' %}" data-nav>
+<span aria-hidden="true">♧</span>People</a>
+<a href="{% url 'manage-concepts' %}" data-nav>
+<span aria-hidden="true">◈</span>Concept analytics</a>
+<a href="{% url 'manage-reports' %}" data-nav>
+<span aria-hidden="true">≡</span>Briefings</a>
+<a href="{% url 'manage-activity' %}" data-nav>
+<span aria-hidden="true">↗</span>Agent activity</a>
+</nav>{% endif %}
+<div class="sidebar-bottom">
+<div class="quiet-callout">
+<span class="status-dot">
+</span>A little learning. Every loop.<p>Build your understanding as you build your next thing.</p>
+</div>
+<nav class="side-nav" aria-label="Account">
+<a href="{% url 'app-settings' %}" data-nav>
+<span aria-hidden="true">⚙</span>Settings</a>{% if user.is_staff %}<a href="/django-admin/">
+<span aria-hidden="true">↗</span>Django admin</a>{% endif %}</nav>
+<details class="profile-menu">
+<summary>
+<span class="avatar">{{ user.get_full_name|default:user.email|first|upper }}</span>
+<span class="profile-name">{{ user.get_full_name|default:user.email }}<small>{% if user.is_staff %}Administrator{% else %}Member{% endif %}</small>
+</span>
+<span aria-hidden="true">⌃</span>
+</summary>
+<div class="profile-dropdown">
+<p>{{ user.email }}</p>
+<a href="{% url 'app-settings' %}">Account settings</a>
+<form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="ghost">Log out</button>
+</form>
+</div>
+</details>
+</div>
+</aside>
+<button class="nav-backdrop" aria-label="Close navigation" hidden>
+</button>
+<div class="workspace-body">
+<header class="topbar">
+<div class="row">
+<button class="ghost mobile-toggle" aria-controls="sidebar" aria-expanded="false" aria-label="Open navigation">☰</button>
+<span class="muted">Workspace</span>
+<span class="breadcrumb-slash">/</span>
+<span id="page-label">LearnLoop</span>
+</div>
+<div class="row">
+<span class="header-note">
+<span class="status-dot">
+</span>Keep your curiosity in the loop</span>
+{% include "core/_motion_toggle.html" %}
+<button class="ghost compact" data-open-search aria-label="Search workspace">⌕</button>
+</div>
 </header>
-<main>
-  {% if messages %}<ul class="messages">{% for m in messages %}<li>{{ m }}</li>{% endfor %}</ul>{% endif %}
-  {% block content %}{% endblock %}
+{% else %}
+<header class="public-header">
+<a class="brand" href="{% url 'landing' %}">
+<span class="brand-mark" aria-hidden="true">
+</span>LearnLoop<span class="brand-dot">.</span>
+</a>
+<nav aria-label="Main">
+{% include "core/_motion_toggle.html" %}
+<a href="{% url 'landing' %}#how-it-works">How it works</a>
+<a href="{% url 'landing' %}#for-teams">For teams</a>
+<a class="btn ghost" href="{% url 'login' %}">Open workspace ↗</a>
+</nav>
+</header>{% endif %}
+<main id="main" tabindex="-1">{% if messages %}<ul class="messages" aria-live="polite">{% for m in messages %}
+<li class="{{ m.tags }}">{{ m }}<button type="button" class="ghost compact" data-dismiss aria-label="Dismiss notification">×</button>
+</li>{% endfor %}</ul>{% endif %}{% block content %}{% endblock %}
+<footer class="page-footer">
+<span>LearnLoop / Understanding, compounded.</span>
+<span class="mono">A little wiser with every loop.</span>
+</footer>
 </main>
-{% block scripts %}{% endblock %}
-</body>
+{% if user.is_authenticated %}</div>
+<dialog id="command-palette" aria-labelledby="search-title">
+<div class="dialog-heading">
+<h2 id="search-title">Find your next insight</h2>
+<button class="ghost compact" data-close-search aria-label="Close search">×</button>
+</div>
+<form action="{% url 'cards' %}" method="get">
+<label for="global-search">Search concepts, explanations, or files</label>
+<div class="row">
+<input id="global-search" name="q" type="search" placeholder="What are you learning?" autocomplete="off">
+<button>Search cards</button>
+</div>
+</form>
+<p class="nav-label">QUICK NAVIGATION</p>
+<nav class="command-links" aria-label="Quick navigation">
+<a href="{% url 'app-home' %}">◫ Overview <span>↵</span>
+</a>
+<a href="{% url 'cards' %}">▤ Learning feed <span>↵</span>
+</a>
+<a href="{% url 'concepts' %}">◇ Concept library <span>↵</span>
+</a>
+<a href="{% url 'app-setup' %}">⌘ Integration <span>↵</span>
+</a>{% if user.is_staff %}<a href="{% url 'manage-home' %}">▦ Team overview <span>↵</span>
+</a>{% endif %}</nav>
+<p class="muted small">Tab to navigate · Enter to open · Esc to close</p>
+</dialog>{% endif %}
+<div id="toast" class="toast" role="status" hidden>
+</div>{% block scripts %}{% endblock %}</body>
 </html>

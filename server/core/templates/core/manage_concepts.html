@@ -1,10 +1,37 @@
-{% extends "core/base.html" %}
-{% block content %}
-{% include "core/_manage_nav.html" %}
-<h2>Org concepts</h2>
-<div class="panel"><table>
-  <tr><th>Concept</th><th>Category</th><th>Users exposed</th><th>Mastered</th><th>Mastery rate</th></tr>
-  {% for r in rows %}<tr><td>{{ r.name }}</td><td class="muted">{{ r.get_category_display }}</td><td>{{ r.exposed }}</td><td>{{ r.mastered }}</td><td>{{ r.mastery_rate }}%</td></tr>
-  {% empty %}<tr><td colspan="5" class="muted">No concepts yet.</td></tr>{% endfor %}
-</table></div>
-{% endblock %}
+{% extends "core/base.html" %}{% block title %}Concept analytics · LearnLoop{% endblock %}{% block content %}
+<div class="page-heading">
+<div>
+<div class="eyebrow">A SHARED MAP OF UNDERSTANDING</div>
+<h1>Concept analytics</h1>
+<p>See how widely each concept is encountered and understood.</p>
+</div>
+<span class="chip">{{ rows|length }} team concepts</span>
+</div>{% include "core/_manage_nav.html" %}
+<section class="panel">
+<div class="table-wrap">
+<table>
+<tr>
+<th scope="col">Concept</th>
+<th scope="col">Category</th>
+<th scope="col">People exposed</th>
+<th scope="col">Mastered</th>
+<th scope="col">Mastery rate</th>
+</tr>{% for r in rows %}
+<tr>
+<td>{{ r.name }}</td>
+<td>
+<span class="chip">{{ r.get_category_display }}</span>
+</td>
+<td class="mono">{{ r.exposed }}</td>
+<td class="mono">{{ r.mastered }}</td>
+<td class="mastery-cell">{{ r.mastery_rate }}%<div class="meter">
+<span style="--width:{{ r.mastery_rate }}%">
+</span>
+</div>
+</td>
+</tr>{% empty %}
+<tr>
+<td colspan="5">Your team’s concept map will appear once learning cards are generated.</td>
+</tr>{% endfor %}</table>
+</div>
+</section>{% endblock %}

@@ -1,0 +1,29 @@
+{% load learnloop %}
+<div class="activity-chart" aria-label="Learning cards generated per day">
+{% for day in activity|chart_bars %}
+<div class="activity-column" tabindex="0" aria-label="{{ day.date }}: {{ day.count }} cards">
+<span class="activity-bar" style="--height:{{ day.height }}%">
+</span>
+<span class="chart-tooltip">{{ day.date }} · {{ day.count }} cards</span>
+</div>{% endfor %}
+</div>
+<div class="chart-labels">
+<span>{{ activity.0.date }}</span>
+<span>CARDS / DAY</span>
+<span>{% with last=activity|last %}{{ last.date }}{% endwith %}</span>
+</div>
+<details class="small muted" style="margin-top:16px">
+<summary>View daily values</summary>
+<div class="table-wrap">
+<table>
+<caption class="skip-caption">Cards generated each day</caption>
+<tr>
+<th scope="col">Date</th>
+<th scope="col">Cards</th>
+</tr>{% for day in activity %}
+<tr>
+<td>{{ day.date }}</td>
+<td>{{ day.count }}</td>
+</tr>{% endfor %}</table>
+</div>
+</details>

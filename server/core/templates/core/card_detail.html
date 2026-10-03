@@ -1,25 +1,50 @@
-{% extends "core/base.html" %}
-{% block title %}{{ card.concept.name }} · LearnLoop{% endblock %}
-{% block content %}
-<p><a href="{% url 'cards' %}">← All cards</a></p>
-<div class="panel">
-  <div class="row"><h2 style="margin:0">{{ card.concept.name }}</h2><span class="chip">{{ card.concept.get_category_display }}</span>
-    {% if uc %}<span class="chip {{ uc.status }}">{{ uc.get_status_display }}</span>{% endif %}</div>
-  <p>{{ card.summary }}</p>
-  <div class="why"><b>Why it's here</b><p style="margin:6px 0">{{ card.why_here }}</p>
-    {% if card.code_snippet %}<div class="muted mono" style="font-size:12px">{{ card.file_path }}</div><pre>{{ card.code_snippet }}</pre>{% endif %}
-  </div>
-  {% if card.diagram_mermaid %}<pre class="mermaid" style="background:#fff;color:#000">{{ card.diagram_mermaid }}</pre>{% endif %}
-  {% if card.doc_url %}<p>📚 <a href="{{ card.doc_url }}" target="_blank" rel="noopener">Read the docs</a></p>{% endif %}
-  <form method="post" action="{% url 'card-action' card.pk %}" class="row">{% csrf_token %}
-    <button name="action" value="known">I know this</button>
-    <button class="ghost" name="action" value="mute">Mute</button>
-    {% if card.saved %}<button class="ghost" name="action" value="unsave">Unsave</button>{% else %}<button class="ghost" name="action" value="save">Save</button>{% endif %}
-  </form>
-  <p class="muted" style="font-size:12px">Created {{ card.created_at }} · session {{ card.session_id|default:"–"|truncatechars:14 }}</p>
+{% extends "core/base.html" %}{% block title %}{{ card.concept.name }} · LearnLoop{% endblock %}{% block content %}
+<a class="back-link" href="{% url 'cards' %}">← Back to learning feed</a>
+<div class="detail-layout">
+<article class="panel detail-content">
+<div class="row" style="margin-bottom:20px">
+<span class="chip">{{ card.concept.get_category_display }}</span>{% if uc %}<span class="chip {{ uc.status }}">{{ uc.get_status_display }}</span>{% endif %}</div>
+<h1>{{ card.concept.name }}</h1>
+<section class="detail-section">
+<h2 class="eyebrow">THE CONCEPT</h2>
+<p>{{ card.summary }}</p>
+</section>
+<section class="why detail-section">
+<h2 class="eyebrow">WHY THIS IS HERE</h2>
+<p>{{ card.why_here }}</p>
+</section>{% if card.code_snippet %}
+<section class="detail-section">
+<div class="panel-heading">
+<h2 class="eyebrow" style="margin:0">IN YOUR CODE</h2>
+<button class="ghost" data-copy="code-snippet">Copy code</button>
 </div>
-{% endblock %}
-{% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-<script>if (window.mermaid) mermaid.initialize({startOnLoad:true});</script>
-{% endblock %}
+<p class="mono muted small">{{ card.file_path }}</p><pre id="code-snippet"><code>{{ card.code_snippet }}</code></pre></section>{% endif %}{% if card.diagram_mermaid %}
+<section class="detail-section">
+<h2 class="eyebrow">THE BIG PICTURE</h2>
+<div id="diagram-render" class="mermaid" hidden>
+</div>
+<details id="diagram-source" open>
+<summary class="muted small">Diagram source</summary><pre id="mermaid-source">{{ card.diagram_mermaid }}</pre></details>
+<p id="diagram-status" class="muted small" role="status">
+</p>
+</section>{% endif %}{% if card.doc_url %}
+<section class="detail-section">
+<h2 class="eyebrow">GO A LITTLE DEEPER</h2>
+<a class="btn ghost" href="{{ card.doc_url }}" target="_blank" rel="noopener noreferrer">Read the documentation ↗</a>
+</section>{% endif %}</article>
+<aside class="panel detail-actions">
+<h3>Make it part of your toolkit.</h3>
+<p class="muted small">Your feedback shapes what LearnLoop explains next.</p>
+<form method="post" action="{% url 'card-action' card.pk %}">{% csrf_token %}<button name="action" value="known">✓ I know this</button>
+<button class="ghost" name="action" value="mute">Mute concept</button>{% if card.saved %}<button class="ghost" name="action" value="unsave">Remove from saved</button>{% else %}<button class="ghost" name="action" value="save">Save for later</button>{% endif %}</form>
+<dl class="metadata">
+<dt>Created</dt>
+<dd>{{ card.created_at|date:"M j, Y · H:i" }}</dd>
+<dt>Source file</dt>
+<dd class="mono">{{ card.file_path|default:"Not provided" }}</dd>
+<dt>Session</dt>
+<dd class="mono">{{ card.session_id|default:"Not provided" }}</dd>
+</dl>
+</aside>
+</div>{% endblock %}
+{% block scripts %}{% if card.diagram_mermaid %}<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js" defer></script><script>window.addEventListener('load', async () => {const source=document.getElementById('mermaid-source'), target=document.getElementById('diagram-render'), status=document.getElementById('diagram-status'); if(!window.mermaid){status.textContent='Diagram preview unavailable. The diagram source is shown above.';return;}try{mermaid.initialize({startOnLoad:false,theme:'dark',securityLevel:'strict',suppressErrorRendering:true});const result=await mermaid.render('learning-diagram',source.textContent);target.innerHTML=result.svg;target.hidden=false;document.getElementById('diagram-source').open=false;}catch{status.textContent='This diagram could not be rendered. You can still read its source above.';}});</script>{% endif %}{% endblock %}

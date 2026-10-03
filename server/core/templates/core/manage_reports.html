@@ -1,12 +1,43 @@
 {% extends "core/base.html" %}
 {% block content %}
 {% include "core/_manage_nav.html" %}
-<div class="row"><h2>Manager briefings</h2>
+<div class="page-heading">
+<div>
+<div class="eyebrow">TURN UNDERSTANDING INTO ACTION</div>
+<h1>Team briefings</h1>
+<p class="muted">Focused recommendations for your next conversation.</p>
+</div>
   <form method="post" style="margin-left:auto" class="row">{% csrf_token %}
-    <select name="days"><option value="7">Last 7 days</option><option value="30">Last 30 days</option></select>
-    <button>Generate briefing</button></form></div>
+    <select name="days" aria-label="Briefing period">
+<option value="7">Last 7 days</option>
+<option value="30">Last 30 days</option>
+</select>
+    <button data-loading="Generating briefing…">Generate briefing</button>
+</form>
+</div>
 <p class="muted">The manager agent investigates hotspots, exposure and who knows what, then writes a short briefing with concrete actions. Schedule it weekly with <code>python manage.py team_report</code>.</p>
-<div class="panel"><table><tr><th>Briefing</th><th>Mode</th><th>Created</th></tr>
-{% for r in reports %}<tr><td><a href="{% url 'manage-report' r.pk %}">{{ r.title }}</a></td><td><span class="chip">{{ r.mode }}</span></td><td class="muted">{{ r.created_at }}</td></tr>
-{% empty %}<tr><td colspan="3" class="muted">No briefings yet.</td></tr>{% endfor %}</table></div>
+<div class="panel">
+<div class="table-wrap">
+<table>
+<tr>
+<th scope="col">Briefing</th>
+<th scope="col">Mode</th>
+<th scope="col">Created</th>
+</tr>
+{% for r in reports %}
+<tr>
+<td>
+<a href="{% url 'manage-report' r.pk %}">{{ r.title }}</a>
+</td>
+<td>
+<span class="chip">{{ r.mode }}</span>
+</td>
+<td class="muted">{{ r.created_at }}</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="3" class="muted">No briefings yet. Choose a period and generate your first team briefing.</td>
+</tr>{% endfor %}</table>
+</div>
+</div>
 {% endblock %}

@@ -1,0 +1,24 @@
+{% load learnloop %}
+<section class="mastery-history">
+  <div class="panel-heading">
+<h3>Mastery over time</h3>
+<span class="muted">Saved briefing snapshots</span>
+</div>
+  {% if mastery_history %}
+  <div class="snapshot-chart" aria-label="Organization mastery at each saved briefing">
+    {% for snapshot in mastery_history reversed %}
+    <a class="snapshot-column" href="{% url 'manage-report' snapshot.pk %}" aria-label="Briefing {{ snapshot.created_at|date:'M j, Y H:i' }}: {{ snapshot.data.org_mastery_rate|pct }} mastery">
+      <span class="snapshot-value">{{ snapshot.data.org_mastery_rate|pct }}</span>
+      <span class="snapshot-track">
+<span style="--height:{{ snapshot.data.org_mastery_rate|pct }}">
+</span>
+</span>
+      <span class="snapshot-date">{{ snapshot.created_at|date:"M j" }}</span>
+    </a>
+    {% endfor %}
+  </div>
+  <p class="muted small" style="margin:15px 0 0">Latest {{ mastery_history|length }} briefing{{ mastery_history|length|pluralize }}. Each bar is a saved snapshot, not a daily measurement.{% if mastery_history|length == 1 %} Generate another briefing later to compare progress.{% endif %}</p>
+  {% else %}
+  <p class="empty-inline">Generate your first team briefing to save a mastery snapshot. Future briefings will show how understanding changes.</p>
+  {% endif %}
+</section>

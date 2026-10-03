@@ -2,38 +2,93 @@
 {% load learnloop %}
 {% block content %}
 {% include "core/_manage_nav.html" %}
-<div class="row"><h2 style="margin:0">{{ target.get_full_name|default:target.email }}</h2>
+<div class="row">
+<h2 style="margin:0">{{ target.get_full_name|default:target.email }}</h1>
   <span class="chip">{% if target.is_staff %}admin{% else %}member{% endif %}</span>
   {% if target.is_active %}<span class="chip known">active</span>{% else %}<span class="chip muted">disabled</span>{% endif %}
-  <span class="muted">{{ target.email }} · token {{ profile.token_prefix|default:"none" }}…</span></div>
+  <span class="muted">{{ target.email }} · token {{ profile.token_prefix|default:"none" }}…</span>
+</div>
 
-{% if secret %}<div class="secret" style="margin:14px 0"><b>{{ secret.label }}</b> (shown once): <span class="mono">{{ secret.value }}</span></div>{% endif %}
+{% if secret %}
+<div class="secret" style="margin:14px 0">
+<b>{{ secret.label }}</b> (shown once): <span class="mono">{{ secret.value }}</span>
+</div>{% endif %}
 
 <div class="grid" style="margin-top:14px">
-  <div class="panel stat"><b>{{ i.surfaced }}</b><span>surfaced</span></div>
-  <div class="panel stat"><b>{{ i.known }}</b><span>known</span></div>
-  <div class="panel stat"><b>{{ i.mastery_rate|pct }}</b><span>mastery</span></div>
-  <div class="panel stat"><b>{{ i.cards_total }}</b><span>cards</span></div>
-  <div class="panel stat"><b>{{ i.streak }}</b><span>day streak</span></div>
+  <div class="panel stat">
+<b>{{ i.surfaced }}</b>
+<span>surfaced</span>
+</div>
+  <div class="panel stat">
+<b>{{ i.known }}</b>
+<span>known</span>
+</div>
+  <div class="panel stat">
+<b>{{ i.mastery_rate|pct }}</b>
+<span>mastery</span>
+</div>
+  <div class="panel stat">
+<b>{{ i.cards_total }}</b>
+<span>cards</span>
+</div>
+  <div class="panel stat">
+<b>{{ i.streak }}</b>
+<span>day streak</span>
+</div>
 </div>
 
 <div class="grid" style="margin-top:14px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr))">
-  <div class="panel"><b>Edit</b>
-    <form method="post">{% csrf_token %}<input type="hidden" name="action" value="edit">{{ form.as_p }}<button>Save</button></form></div>
-  <div class="panel"><b>Actions</b>
+  <div class="panel">
+<h3>Learning & access</h3>
+<p class="muted small">Update this member’s profile, role, and learning preferences.</p>
+    <form method="post">{% csrf_token %}<input type="hidden" name="action" value="edit">{{ form.as_p }}<button>Save</button>
+</form>
+</div>
+  <div class="panel">
+<h3>Account controls</h3>
+<p class="muted small">Manage access and issue replacement credentials.</p>
     <form method="post" class="row" style="margin-top:8px">{% csrf_token %}
-      {% if target != user %}<button class="ghost" name="action" value="toggle_active">{% if target.is_active %}Disable{% else %}Enable{% endif %}</button>{% endif %}
+      {% if target != user %}<button class="ghost danger" name="action" value="toggle_active">{% if target.is_active %}Disable{% else %}Enable{% endif %}</button>{% endif %}
       <button class="ghost" name="action" value="reset_password">Reset password</button>
       <button class="ghost" name="action" value="regenerate_token">Regenerate token</button>
     </form>
     <p class="muted" style="font-size:13px">Disabling blocks login and the plugin token immediately.</p>
-    <b>Their hotspots</b>
-    <ul>{% for h in hotspots %}<li class="mono">{{ h.area }} <span class="muted">({{ h.cards }} concepts, {{ h.understood_rate|pct }} understood)</span></li>{% empty %}<li class="muted">None.</li>{% endfor %}</ul>
+    <h3 style="margin-top:25px">Where support could help</h3>
+    <ul>{% for h in hotspots %}
+<li class="mono">{{ h.area }} <span class="muted">({{ h.cards }} concepts, {{ h.understood_rate|pct }} understood)</span>
+</li>{% empty %}
+<li class="muted">None.</li>{% endfor %}</ul>
   </div>
 </div>
 
-<div class="panel" style="margin-top:14px"><b>Concepts</b>
-  <table><tr><th>Concept</th><th>Category</th><th>Status</th><th>Seen</th><th>Last seen</th></tr>
-  {% for uc in concepts %}<tr><td>{{ uc.concept.name }}</td><td class="muted">{{ uc.concept.get_category_display }}</td><td><span class="chip {{ uc.status }}">{{ uc.status }}</span></td><td>{{ uc.seen_count }}</td><td class="muted">{{ uc.last_seen|timesince }} ago</td></tr>
-  {% empty %}<tr><td colspan="5" class="muted">No concepts yet.</td></tr>{% endfor %}</table></div>
+<div class="panel" style="margin-top:14px">
+<div class="panel-heading">
+<h3>Concept library</h3>
+<span class="muted">Latest 50 concepts</span>
+</div>
+  <div class="table-wrap">
+<table>
+<tr>
+<th scope="col">Concept</th>
+<th scope="col">Category</th>
+<th scope="col">Status</th>
+<th scope="col">Seen</th>
+<th scope="col">Last seen</th>
+</tr>
+  {% for uc in concepts %}
+<tr>
+<td>{{ uc.concept.name }}</td>
+<td class="muted">{{ uc.concept.get_category_display }}</td>
+<td>
+<span class="chip {{ uc.status }}">{{ uc.status }}</span>
+</td>
+<td>{{ uc.seen_count }}</td>
+<td class="muted">{{ uc.last_seen|timesince }} ago</td>
+</tr>
+  {% empty %}
+<tr>
+<td colspan="5" class="muted">No concepts yet.</td>
+</tr>{% endfor %}</table>
+</div>
+</div>
 {% endblock %}

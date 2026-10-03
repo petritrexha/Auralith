@@ -1,0 +1,5 @@
+<div class="panel empty-state">
+<span class="empty-icon" aria-hidden="true">◇</span>
+<h3>{{ empty_title|default:"A new loop starts here" }}</h3>
+<p>{{ empty_text|default:"Connect your coding workflow to start building your learning library." }}</p>{% if empty_url %}<a class="btn ghost" href="{{ empty_url }}">{{ empty_action|default:"Set up integration" }} <span aria-hidden="true">↗</span>
+</a>{% endif %}</div>

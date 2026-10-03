@@ -1,47 +1,77 @@
-{% extends "core/base.html" %}
-{% block content %}
-<h2>Set up the Claude Code plugin</h2>
-<p class="muted">About 3 minutes. Code diffs leave your machine: they go to this LearnLoop server and to Anthropic's API. Secret files (.env, keys) and common credential patterns are removed on your machine first, and only a short snippet is stored per card.</p>
-
-<div class="panel" style="margin-bottom:12px"><b>1 · Your token</b>
-  {% if new_token %}
-    <p>Copy it now — it won't be shown again.</p>
-    <div class="secret mono" id="tok">{{ new_token }}</div>
-    <p><button onclick="navigator.clipboard.writeText(document.getElementById('tok').textContent.trim())">Copy token</button></p>
-  {% else %}
-    <p>Your current token starts with <code>{{ profile.token_prefix|default:"(none)" }}…</code>. Tokens are stored hashed, so we can't show it again. Lost it? Make a new one (the old one stops working):</p>
-    <form method="post" action="{% url 'regenerate-token' %}">{% csrf_token %}<button>Generate new token</button></form>
-  {% endif %}
+{% extends "core/base.html" %}{% block title %}Integration · LearnLoop{% endblock %}{% block content %}
+<div class="page-heading">
+<div>
+<div class="eyebrow">CONNECT YOUR WORKFLOW</div>
+<h1>A small setup. A continuous loop.</h1>
+<p>Connect Claude Code to your learning workspace in about three minutes.</p>
 </div>
-
-<div class="panel" style="margin-bottom:12px"><b>2 · Install the plugin</b>
-<p>In Claude Code, add the LearnLoop marketplace and install the plugin (use your team's repo URL or local folder):</p>
-<pre>/plugin marketplace add &lt;path-or-git-url-of-the-learnloop-repo&gt;
-/plugin install learnloop@learnloop</pre>
-<p>Claude Code will ask for the <b>server URL</b> and your <b>token</b> when you enable it:</p>
-<pre>Server URL: {{ server_url }}
-Token:      (the token from step 1)</pre>
-<p class="muted">Prefer environment variables? Set <code>LEARNLOOP_URL={{ server_url }}</code> and <code>LEARNLOOP_TOKEN=…</code> in your shell profile instead. For local development: <code>claude --plugin-dir ./plugin</code>.</p>
+<span class="chip">Claude Code integration</span>
 </div>
-
-<div class="panel" style="margin-bottom:12px"><b>3 · Test the connection</b>
-  <p>Start a new Claude Code session (the plugin pings on start), then click:</p>
-  <p class="row"><button id="test">Test connection</button> <span id="status" class="muted">{% if last_ping %}Last seen {{ last_ping|timesince }} ago{% else %}Not connected yet{% endif %}</span></p>
+<div class="setup-grid">
+<div>
+<section class="panel setup-step">
+<div class="step-title">
+<span class="step-number">01</span>
+<h3>Create your connection token</h3>
+</div>{% if new_token %}<p class="muted">This token is shown once. Copy it now and keep it somewhere safe.</p>
+<div class="secret mono" id="tok">{{ new_token }}</div>
+<p style="margin-top:16px">
+<button data-copy="tok">Copy token</button>
+</p>{% else %}<p class="muted">Current token: <code>{{ profile.token_prefix|default:"No token yet" }}{% if profile.token_prefix %}…{% endif %}</code>
+</p>
+<p class="small muted">Tokens are stored hashed and cannot be shown again. Creating a new token immediately replaces the old one.</p>
+<form method="post" action="{% url 'regenerate-token' %}">{% csrf_token %}<button>Generate new token</button>
+</form>{% endif %}</section>
+<section class="panel setup-step">
+<div class="step-title">
+<span class="step-number">02</span>
+<h3>Install in Claude Code</h3>
 </div>
-
-<div class="panel"><b>4 · Code as usual, then train it</b>
-  <p>When the agent finishes a turn and something new came up, a LearnLoop card appears in the terminal and in <a href="{% url 'cards' %}">your feed</a>. Mark cards "I know this" or "Mute" so it stops repeating itself.</p>
+<p class="muted small">Use your team’s repository URL or local folder in the marketplace command.</p><pre id="install-command">/plugin marketplace add &lt;path-or-git-url-of-the-learnloop-repo&gt;
+/plugin install learnloop@learnloop</pre><button class="ghost" data-copy="install-command">Copy commands</button>
+<p class="muted small" style="margin-top:22px">When Claude Code asks, enter this server URL and the token from step 1.</p>
+<div class="row">
+<code id="server-url">{{ server_url }}</code>
+<button class="ghost" data-copy="server-url">Copy URL</button>
 </div>
-{% endblock %}
-{% block scripts %}
-<script>
-document.getElementById("test").addEventListener("click", async () => {
-  const el = document.getElementById("status");
-  el.textContent = "Checking…";
-  const r = await fetch("{% url 'app-setup-status' %}");
-  const d = await r.json();
-  el.textContent = d.connected ? "✅ Connected — the plugin talked to the server " + new Date(d.last_ping).toLocaleTimeString()
-                               : "⚠️ No recent ping. Start a new Claude Code session, then try again.";
-});
-</script>
-{% endblock %}
+<details style="margin-top:22px">
+<summary class="small muted">Environment variables & local development</summary><pre>LEARNLOOP_URL={{ server_url }}
+LEARNLOOP_TOKEN=&lt;your-token&gt;</pre><p class="small muted">Set these in your shell profile. For local development, run <code>claude --plugin-dir ./plugin</code>.</p>
+</details>
+</section>
+<section class="panel setup-step">
+<div class="step-title">
+<span class="step-number">03</span>
+<h3>Check the connection</h3>
+</div>
+<p class="muted small">Start a new Claude Code session so the plugin can send its first ping.</p>
+<div class="row">
+<button id="test" data-url="{% url 'app-setup-status' %}">Test connection</button>
+<span id="status" class="muted small" role="status" aria-live="polite">{% if last_ping %}Last seen {{ last_ping|timesince }} ago{% else %}Waiting for your first connection{% endif %}</span>
+</div>
+</section>
+<section class="panel setup-step">
+<div class="step-title">
+<span class="step-number">04</span>
+<h3>Build something. Learn something.</h3>
+</div>
+<p class="muted">When the agent finishes a turn, relevant concepts appear in your terminal and <a href="{% url 'cards' %}">learning feed</a>. Choose “I know this” or “Mute” to shape what comes next.</p>
+</section>
+</div>
+<aside class="panel setup-note">
+<span class="empty-icon" aria-hidden="true">⌘</span>
+<h3>Your code, with context.</h3>
+<p class="muted">LearnLoop connects learning to the work you’re already doing.</p>
+<ul class="insight-list">
+<li>Personal explanations <span>✓</span>
+</li>
+<li>Relevant documentation <span>✓</span>
+</li>
+<li>Knowledge that carries forward <span>✓</span>
+</li>
+</ul>
+<hr style="border:0;border-top:1px solid var(--line);margin:24px 0">
+<h3>What leaves your machine</h3>
+<p class="muted">Code diffs go to this server and Anthropic’s API. Secret files and common credentials are scrubbed first. Only short snippets are stored in cards.</p>
+</aside>
+</div>{% endblock %}

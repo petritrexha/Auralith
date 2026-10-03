@@ -1,20 +1,111 @@
 {% extends "core/base.html" %}
+{% block title %}LearnLoop · Build fast. Understand more.{% endblock %}
 {% block content %}
-<section style="padding:40px 0">
-  <h1 style="font-size:40px;margin:0 0 8px">Learn what your AI just built, while it builds it.</h1>
-  <p class="muted" style="font-size:18px;max-width:720px">Businesses are handing their code to AI agents. LearnLoop is the agent that makes sure their people still understand it — and shows managers where the gaps are.</p>
-  <p class="row"><a class="btn" href="{% url 'login' %}">Log in</a> <span class="muted">No public signup — ask your admin for an account.</span></p>
+<section class="hero">
+<div class="hero-copy">
+<div class="eyebrow">YOUR CODE. YOUR UNDERSTANDING.</div>
+<h1>Build fast.<br>Keep the<br>
+<em>understanding.</em>
+</h1>
+<p>Your AI writes the code. LearnLoop helps you make it yours, one relevant concept at a time. Right in your workflow.</p>
+<div class="row">
+<a class="btn" href="{% url 'login' %}">Enter your workspace <span aria-hidden="true">↗</span>
+</a>
+<a class="btn ghost" href="#how-it-works">See how it works</a>
+</div>
+<p class="fine-print">Built for Claude Code · Accounts provided by your team</p>
+</div>
+<div class="hero-art" aria-label="Example of a LearnLoop learning card">
+<div class="terminal">
+<div class="terminal-top">
+<i>
+</i>
+<i>
+</i>
+<i>
+</i>
+<span>~/your-next-project</span>
+</div>
+<div class="terminal-body">
+<span class="muted">$ claude</span>
+<br>› Add refresh token rotation<br>
+<br>
+<span class="accent">✓</span> Updated src/auth/session.ts<br>
+<span class="accent">✓</span> Added token reuse detection<br>
+<br>
+<span class="accent">↳ LearnLoop found a learning moment.</span>
+</div>
+</div>
+<div class="hero-preview">
+<div class="row">
+<span class="chip known">Learning moment</span>
+<span class="muted small">Example card</span>
+</div>
+<h3>Refresh token rotation</h3>
+<p>Replace the refresh token every time it’s used. An old token can’t quietly open a new session.</p>
+<div class="why">
+<h3>Why this is here</h3>
+<p>Your session handler now invalidates the previous token before issuing the next one.</p>
+</div>
+<div class="preview-footer" style="margin-top:20px">
+<span class="mono">auth / session.ts</span>
+<span>Small insight. Lasting knowledge.</span>
+</div>
+</div>
+</div>
 </section>
-<section class="grid">
-  <div class="panel"><b>1 · Your agent codes</b><p class="muted">Claude Code edits files as usual. LearnLoop quietly collects the diffs (secrets scrubbed on your machine).</p></div>
-  <div class="panel"><b>2 · LearnLoop decides</b><p class="muted">A teaching agent checks what <em>you</em> already know and picks what's worth explaining — usually 0–2 things.</p></div>
-  <div class="panel"><b>3 · You get a card</b><p class="muted">A short "why it's here, in your code" card appears in the terminal and in your feed. Managers see team-wide comprehension.</p></div>
+<div class="landing-divider">
+<span>LESS CONTEXT SWITCHING</span>
+<span>LEARNING FROM YOUR CODE</span>
+<span>UNDERSTANDING THAT STAYS</span>
+</div>
+<section class="landing-section" id="how-it-works">
+<div class="eyebrow">A SMALL LOOP. A LASTING DIFFERENCE.</div>
+<h2>From “it works” to<br>“I know why it works.”</h2>
+<p class="muted">Learning that fits the work you’re already doing.</p>
+<div class="feature-grid">
+<article class="panel">
+<div class="feature-number">01 / BUILD</div>
+<h3>Stay in your flow.</h3>
+<p>Keep coding with Claude Code. LearnLoop collects changes in the background and scrubs common secrets before sending them.</p>
+</article>
+<article class="panel">
+<div class="feature-number">02 / CONNECT</div>
+<h3>Find the useful detail.</h3>
+<p>Your teaching agent checks what you already know and picks the concepts worth your attention. Usually just one or two.</p>
+</article>
+<article class="panel">
+<div class="feature-number">03 / UNDERSTAND</div>
+<h3>Make the knowledge yours.</h3>
+<p>Get a clear explanation, the reason it matters in your code, and a path to the docs. Mark what you know and move forward.</p>
+</article>
+</div>
 </section>
-<section class="panel" style="margin-top:20px">
-  <pre>💡 LearnLoop · JWT refresh token rotation
-Short-lived access tokens + a long-lived refresh token that is replaced on every use.
-Here: src/auth/jwt.ts issues a new refresh token on every /refresh call.
-Read more → https://learnloop.example/app/cards/41</pre>
+<section class="team-banner" id="for-teams">
+<div>
+<div class="eyebrow">BUILT FOR SHARED UNDERSTANDING</div>
+<h2>A team that ships.<br>And knows what it shipped.</h2>
+<p>See where knowledge is growing, where concepts keep coming up, and where a little support could make a difference.</p>
+<a class="btn ghost" href="{% url 'login' %}">Open your team workspace ↗</a>
+</div>
+<ul class="insight-list">
+<li>
+<span>Team concept mastery</span>
+<span class="chip known">Understand</span>
+</li>
+<li>
+<span>Code comprehension hotspots</span>
+<span class="chip seen">Support</span>
+</li>
+<li>
+<span>Agent-generated team briefings</span>
+<span class="chip new">Act</span>
+</li>
+<li>
+<span>Transparent AI usage and cost</span>
+<span class="chip">Monitor</span>
+</li>
+</ul>
 </section>
-<p class="muted" style="margin-top:28px;font-size:13px">Privacy: code diffs leave your machine and are sent to your company's LearnLoop server and to Anthropic's API for analysis. Secret files and common credential patterns are removed before anything is sent; only a short snippet is stored per card.</p>
+<p class="privacy-note">Your workflow, with clear boundaries. Code diffs are sent to your company’s LearnLoop server and to Anthropic’s API for analysis. Secret files and common credential patterns are removed first. Only short snippets are stored in learning cards.</p>
 {% endblock %}

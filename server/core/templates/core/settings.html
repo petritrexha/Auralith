@@ -1,12 +1,33 @@
-{% extends "core/base.html" %}
-{% block content %}
-<h2>Settings</h2>
-<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr))">
-  <div class="panel"><b>Learning</b>
-    <form method="post">{% csrf_token %}{{ form.as_p }}<button name="save_settings" value="1">Save</button></form>
-    <p class="muted" style="font-size:13px">Skill level tells the agent what's too basic to explain. The daily limit caps cards per day.</p></div>
-  <div class="panel"><b>Change password</b>
-    <form method="post">{% csrf_token %}{{ pw_form.as_p }}<button name="change_password" value="1">Change password</button></form></div>
-  <div class="panel"><b>Plugin token</b><p>Manage it on the <a href="{% url 'app-setup' %}">setup page</a>.</p></div>
+{% extends "core/base.html" %}{% block title %}Settings · LearnLoop{% endblock %}{% block content %}
+<div class="page-heading">
+<div>
+<div class="eyebrow">MAKE THE LOOP YOURS</div>
+<h1>Settings</h1>
+<p>Fine-tune your learning pace and manage your account.</p>
 </div>
-{% endblock %}
+<span class="chip">{{ user.email }}</span>
+</div>
+<div class="settings-grid">
+<section class="panel">
+<h3>Learning preferences</h3>
+<p class="muted small">Choose the level and pace that fit your work.</p>
+<form method="post">{% csrf_token %}{{ form.as_p }}<button name="save_settings" value="1">Save preferences</button>
+</form>
+<p class="muted small" style="margin-top:20px">Skill level helps the agent skip the basics you already know. The daily limit caps how many cards you receive.</p>
+</section>
+<section class="panel">
+<h3>Password & security</h3>
+<p class="muted small">Keep access to your workspace secure.</p>
+<form method="post">{% csrf_token %}{{ pw_form.as_p }}<button name="change_password" value="1">Change password</button>
+</form>
+</section>
+</div>
+<section class="panel" style="margin-top:22px">
+<div class="page-heading" style="margin:0">
+<div>
+<h3>Claude Code integration</h3>
+<p class="small">Manage your plugin token and check your connection.</p>
+</div>
+<a class="btn ghost" href="{% url 'app-setup' %}">Manage integration ↗</a>
+</div>
+</section>{% endblock %}

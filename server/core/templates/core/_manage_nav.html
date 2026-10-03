@@ -1,8 +1,7 @@
-<p class="row" style="margin-bottom:18px">
-  <a class="btn ghost" href="{% url 'manage-home' %}">Org dashboard</a>
-  <a class="btn ghost" href="{% url 'manage-users' %}">Users</a>
-  <a class="btn ghost" href="{% url 'manage-concepts' %}">Concepts</a>
-  <a class="btn ghost" href="{% url 'manage-reports' %}">Briefings</a>
-  <a class="btn ghost" href="{% url 'manage-activity' %}">Agent activity</a>
-  <a class="btn ghost" href="/django-admin/">Django admin</a>
-</p>
+<nav class="subnav" aria-label="Organization sections">
+<a href="{% url 'manage-home' %}">Overview</a>
+<a href="{% url 'manage-users' %}">People</a>
+<a href="{% url 'manage-concepts' %}">Concept analytics</a>
+<a href="{% url 'manage-reports' %}">Briefings</a>
+<a href="{% url 'manage-activity' %}">Agent activity</a>
+</nav>
