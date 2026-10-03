@@ -1,0 +1,95 @@
+{
+  "name": "learnloop",
+  "displayName": "LearnLoop",
+  "description": "Learn what your AI just built, while it builds it. Shows your LearnLoop cards next to the code they explain.",
+  "version": "0.1.0",
+  "publisher": "learnloop",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": ["Education", "Other"],
+  "keywords": ["learning", "ai", "claude", "comprehension", "teams"],
+  "main": "./extension.js",
+  "activationEvents": ["onStartupFinished"],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        { "id": "learnloop", "title": "LearnLoop", "icon": "media/learnloop.svg" }
+      ]
+    },
+    "views": {
+      "learnloop": [
+        { "id": "learnloop.cards", "name": "Learning cards" }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "learnloop.cards",
+        "contents": "Connect LearnLoop to see the cards your AI agent's work produces, right next to your code.\n[Connect with my token](command:learnloop.setToken)\nGet your token on the LearnLoop Setup page (the same one the Claude Code plugin uses).",
+        "when": "!learnloop.configured"
+      },
+      {
+        "view": "learnloop.cards",
+        "contents": "No cards yet. Keep coding with Claude Code: new concepts show up here as soon as they're explained.\n[Open my skill map](command:learnloop.openSkillMap)",
+        "when": "learnloop.configured"
+      }
+    ],
+    "commands": [
+      { "command": "learnloop.setToken", "title": "Connect (set token)", "category": "LearnLoop" },
+      { "command": "learnloop.clearToken", "title": "Disconnect", "category": "LearnLoop" },
+      { "command": "learnloop.refresh", "title": "Refresh cards", "category": "LearnLoop", "icon": "$(refresh)" },
+      { "command": "learnloop.openDashboard", "title": "Open dashboard", "category": "LearnLoop", "icon": "$(link-external)" },
+      { "command": "learnloop.openSkillMap", "title": "Open skill map", "category": "LearnLoop", "icon": "$(checklist)" },
+      { "command": "learnloop.openCard", "title": "Open card", "category": "LearnLoop" },
+      { "command": "learnloop.markKnown", "title": "I know this", "category": "LearnLoop", "icon": "$(check)" },
+      { "command": "learnloop.mute", "title": "Don't explain this again", "category": "LearnLoop" },
+      { "command": "learnloop.openOnWeb", "title": "Open on the web", "category": "LearnLoop" }
+    ],
+    "menus": {
+      "view/title": [
+        { "command": "learnloop.refresh", "when": "view == learnloop.cards", "group": "navigation@1" },
+        { "command": "learnloop.openSkillMap", "when": "view == learnloop.cards", "group": "navigation@2" },
+        { "command": "learnloop.openDashboard", "when": "view == learnloop.cards", "group": "navigation@3" }
+      ],
+      "view/item/context": [
+        { "command": "learnloop.markKnown", "when": "view == learnloop.cards && viewItem == card", "group": "inline" },
+        { "command": "learnloop.markKnown", "when": "view == learnloop.cards && viewItem == card", "group": "1_actions@1" },
+        { "command": "learnloop.mute", "when": "view == learnloop.cards && viewItem =~ /^card/", "group": "1_actions@2" },
+        { "command": "learnloop.openOnWeb", "when": "view == learnloop.cards && viewItem =~ /^card/", "group": "2_web@1" }
+      ],
+      "commandPalette": [
+        { "command": "learnloop.openCard", "when": "false" },
+        { "command": "learnloop.markKnown", "when": "false" },
+        { "command": "learnloop.mute", "when": "false" },
+        { "command": "learnloop.openOnWeb", "when": "false" }
+      ]
+    },
+    "configuration": {
+      "title": "LearnLoop",
+      "properties": {
+        "learnloop.serverUrl": {
+          "type": "string",
+          "default": "http://127.0.0.1:8000",
+          "description": "Your company's LearnLoop server (shown on the Setup page)."
+        },
+        "learnloop.pollSeconds": {
+          "type": "number",
+          "default": 15,
+          "minimum": 5,
+          "description": "How often to check for new cards."
+        },
+        "learnloop.notifications": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a notification when a new card arrives."
+        },
+        "learnloop.codeLens": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a 💡 lens above code that has a LearnLoop card."
+        }
+      }
+    }
+  }
+}

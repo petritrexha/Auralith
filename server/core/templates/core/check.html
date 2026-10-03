@@ -1,0 +1,75 @@
+{% extends "core/base.html" %}
+{% block title %}Check · {{ check.card.concept.name }} · LearnLoop{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'card-detail' check.card.pk %}">← Back to the card</a>
+<div class="page-heading">
+<div>
+<div class="eyebrow">PROVE IT · {{ check.card.concept.name|upper }}</div>
+<h1>Explain it in your own words.</h1>
+<p class="mono muted small">{{ check.card.file_path }}</p>
+</div>
+<span id="timer" class="chip seen" aria-live="off">--:--</span>
+</div>
+<article class="panel" style="max-width:780px">
+<p style="font-size:1.15rem;margin-top:0">{{ check.question }}</p>
+<form method="post" action="{% url 'check-submit' check.pk %}" id="check-form">{% csrf_token %}
+<label class="sr-only" for="answer">Your answer</label>
+<textarea id="answer" name="answer" rows="9" style="width:100%" autocomplete="off" autocorrect="off" spellcheck="true"
+  placeholder="Type your answer… 3–5 sentences is plenty. Informal is fine, English mistakes don't matter."></textarea>
+<input type="hidden" name="telemetry" id="telemetry">
+<div class="row" style="margin-top:12px"><button id="submit-btn">Submit answer</button>
+<span class="muted small" id="counter">0 characters</span></div>
+</form>
+<p class="privacy-note muted small">🔒 Fair play: typing only (paste is turned off), {{ check.time_limit_seconds|floatformat:0 }} seconds, and leaving this tab is noted.
+Writing tools that insert text (like grammar extensions) can make an answer "unverified". You can always try again — this is how your team knows the AI's code is truly understood.</p>
+</article>
+{% endblock %}
+{% block scripts %}
+<script>
+(() => {
+  const ta = document.getElementById("answer"), form = document.getElementById("check-form");
+  const t = { keystrokes: 0, typed_chars: 0, paste_attempts: 0, drop_attempts: 0, blur_count: 0, hidden_seconds: 0,
+              active_typing_seconds: 0, first_key_after_seconds: null, other_inserts: 0, ua: navigator.userAgent.slice(0, 120) };
+  const opened = Date.now(); let lastInput = null, hiddenSince = null, submitted = false;
+
+  ["paste", "drop"].forEach(ev => ta.addEventListener(ev, e => {
+    e.preventDefault(); t[ev === "paste" ? "paste_attempts" : "drop_attempts"]++;
+    flash(ev === "paste" ? "Paste is turned off — type it in your own words 🙂" : "Drag and drop is turned off.");
+  }));
+  ta.addEventListener("contextmenu", e => e.preventDefault());
+  ta.addEventListener("keydown", e => { if (e.key.length === 1 || e.key === "Enter") t.keystrokes++;
+    if (t.first_key_after_seconds === null) t.first_key_after_seconds = Math.round((Date.now() - opened) / 1000); });
+  ta.addEventListener("beforeinput", e => {
+    const now = Date.now();
+    if (lastInput && now - lastInput < 5000) t.active_typing_seconds += (now - lastInput) / 1000;
+    lastInput = now;
+    const typed = ["insertText", "insertCompositionText", "insertLineBreak", "insertReplacementText"];
+    if (typed.includes(e.inputType)) t.typed_chars += (e.data || (e.inputType === "insertLineBreak" ? "\n" : "")).length || 1;
+    else if (e.inputType.startsWith("insert")) t.other_inserts++;
+  });
+  ta.addEventListener("input", () => document.getElementById("counter").textContent = ta.value.length + " characters");
+  window.addEventListener("blur", () => t.blur_count++);
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) hiddenSince = Date.now();
+    else if (hiddenSince) { t.hidden_seconds += (Date.now() - hiddenSince) / 1000; hiddenSince = null; }
+  });
+
+  function flash(msg) { const c = document.getElementById("counter"); c.textContent = msg; setTimeout(() => c.textContent = ta.value.length + " characters", 2500); }
+  function submit() {
+    if (submitted) return; submitted = true;
+    if (hiddenSince) t.hidden_seconds += (Date.now() - hiddenSince) / 1000;
+    t.active_typing_seconds = Math.round(t.active_typing_seconds * 10) / 10;
+    t.hidden_seconds = Math.round(t.hidden_seconds);
+    document.getElementById("telemetry").value = JSON.stringify(t);
+    form.submit();
+  }
+  form.addEventListener("submit", e => { e.preventDefault(); submit(); });
+
+  let remaining = {{ remaining }};
+  const timer = document.getElementById("timer");
+  const tick = () => { const m = Math.floor(remaining / 60), s = remaining % 60;
+    timer.textContent = `${m}:${String(s).padStart(2, "0")}`; if (remaining <= 0) submit(); remaining--; };
+  tick(); setInterval(tick, 1000); ta.focus();
+})();
+</script>
+{% endblock %}

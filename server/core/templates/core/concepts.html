@@ -8,28 +8,42 @@
 <a class="btn ghost" href="{% url 'cards' %}">Explore learning cards ↗</a>
 </div>
 <section id="checklist" class="checklist" aria-labelledby="checklist-title">
-<div class="panel-heading">
+<div class="checklist-head">
 <div>
-<h2 id="checklist-title">Your stack checklist</h2>
-<p class="muted small">Tick what you already know. LearnLoop won't explain anything inside a ticked topic.</p>
+<h2 id="checklist-title">Your skill map</h2>
+<p class="muted small">Tick what you already know. LearnLoop won't explain anything you've ticked. Ticking a general topic covers every skill inside it.</p>
 </div>
-<div class="checklist-total" aria-live="polite"><b data-checklist-count>{{ checklist_known }}</b> / {{ checklist_total }} known</div>
+<div class="level-badge" data-level-badge>
+<span class="eyebrow" data-level>{{ progress.level }}</span>
+<b><span data-checklist-count>{{ progress.count }}</span> skills known</b>
 </div>
-<div class="checklist-bar" aria-hidden="true"><span data-checklist-bar style="width:{% widthratio checklist_known checklist_total 100 %}%"></span></div>
+</div>
+<div class="checklist-bar" aria-hidden="true"><span data-checklist-bar style="width:{{ progress.percent }}%"></span></div>
+<p class="checklist-motivation" aria-live="polite"><span data-motivation>{{ progress.message }}</span>{% if progress.next_level %} <span class="muted" data-next>{{ progress.to_next }} more to reach {{ progress.next_level }}.</span>{% endif %}</p>
+<p class="checklist-note small"><b>This is a starting map, not every skill there is.</b> These {{ progress.total }} skills are only a part of what LearnLoop recognises. Anything else you meet in real work still shows up under “Concepts from your work” below.</p>
 <form method="post" action="{% url 'concept-checklist' %}" data-checklist>{% csrf_token %}
-<div class="checklist-grid">{% for s in sectors %}
-<fieldset class="panel checklist-sector" data-sector>
-<legend class="sr-only">{{ s.sector.name }}</legend>
-<div class="checklist-sector-head">
-<h3 aria-hidden="true">{{ s.sector.name }}</h3>
-<span class="muted small"><span data-sector-count>{{ s.known_count }}</span>/{{ s.topics|length }}</span>
+<div class="sector-tabs" role="tablist" aria-label="Skill areas" data-sector-tabs hidden>{% for s in sectors %}
+<button type="button" role="tab" class="sector-tab" id="tab-{{ s.sector.key }}" aria-controls="sector-{{ s.sector.key }}" aria-selected="false" data-tab="{{ s.sector.key }}">
+<b>{{ s.sector.name }}</b>
+<span class="muted small">{{ s.sector.blurb }}</span>
+<span class="sector-meter"><span data-tab-bar style="width:{% widthratio s.known_count s.total 100 %}%"></span></span>
+<span class="mono small"><span data-sector-count>{{ s.known_count }}</span>/{{ s.total }}</span>
+</button>{% endfor %}
 </div>
-<p class="muted small">{{ s.sector.blurb }}</p>
-<ul class="checklist-items">{% for item in s.topics %}
-<li><label class="check"><input type="checkbox" name="topics" value="{{ item.topic.slug }}"{% if item.known %} checked{% endif %}><span>{{ item.topic.name }}</span></label></li>{% endfor %}
+<p class="muted small sector-hint" data-sector-hint hidden>Pick an area to open its topics.</p>
+{% for s in sectors %}
+<div class="sector-panel" id="sector-{{ s.sector.key }}" role="tabpanel" aria-labelledby="tab-{{ s.sector.key }}" data-sector="{{ s.sector.key }}">
+<h3 class="sector-panel-title">{{ s.sector.name }}</h3>{% for t in s.topics %}
+<details class="topic" data-topic>
+<summary><span class="topic-name">{{ t.topic.name }}</span><span class="topic-count mono small"><span data-topic-count>{{ t.known_count }}</span>/{{ t.skills|length }}</span></summary>
+<div class="topic-body">
+<label class="check check-all"><input type="checkbox" name="topics" value="{{ t.topic.slug }}" data-general{% if t.known %} checked{% endif %}><span>I know all of {{ t.topic.name }}</span></label>
+<ul class="skill-list">{% for k in t.skills %}
+<li><label class="check"><input type="checkbox" name="topics" value="{{ k.topic.slug }}" data-skill data-own="{{ k.own|yesno:'1,0' }}"{% if k.known %} checked{% endif %}{% if t.known %} disabled{% endif %}><span>{{ k.topic.name }}</span></label></li>{% endfor %}
 </ul>
-</fieldset>{% endfor %}
 </div>
+</details>{% endfor %}
+</div>{% endfor %}
 <div class="row checklist-save" data-checklist-save><button type="submit">Save checklist</button></div>
 </form>
 </section>

@@ -122,7 +122,9 @@ def set_status(user, concept: Concept, status: str) -> UserConcept:
     uc, _ = UserConcept.objects.get_or_create(user=user, concept=concept)
     uc.status = status
     uc.known_at = timezone.now() if status == UserConcept.Status.KNOWN else None
-    uc.save(update_fields=["status", "known_at"])
+    if status != UserConcept.Status.KNOWN:
+        uc.verified_at = None
+    uc.save(update_fields=["status", "known_at", "verified_at"])
     return uc
 
 

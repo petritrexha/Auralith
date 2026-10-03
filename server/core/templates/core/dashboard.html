@@ -21,7 +21,7 @@
 <span class="stat-label">Concepts learned <i>✓</i>
 </span>
 <b>{{ i.known }}</b>
-<span class="stat-foot positive">Understanding that stays</span>
+<span class="stat-foot positive">{{ i.verified }} verified by a check</span>
 </div>
 <div class="panel stat">
 <span class="stat-label">Mastery rate <i>◔</i>
@@ -37,6 +37,22 @@
 <span class="stat-foot positive">Consecutive days with learning cards</span>
 </div>
 </div>
+<section class="panel skills-panel" aria-labelledby="skills-title">
+<div class="panel-heading">
+<h3 id="skills-title">Your skill map</h3>
+<span class="muted">{{ skills.level }}</span>
+</div>
+<div class="skills-row">
+<div class="skills-count">{{ skills.count }}<span class="muted small"> / {{ skills.total }}</span></div>
+<div class="skills-copy">
+<b>{{ skills.message }}</b>
+<p class="muted small">{% if skills.next_level %}Tick {{ skills.to_next }} more skill{{ skills.to_next|pluralize }} to reach <b>{{ skills.next_level }}</b>. {% endif %}Every skill you tick is one less card about something you already know.</p>
+<span class="checklist-bar" aria-hidden="true"><span style="width:{{ skills.next_percent }}%"></span></span>
+</div>
+<a class="btn" href="{% url 'concepts' %}#checklist">{% if skills.count %}Keep ticking{% else %}Map your skills{% endif %} <span aria-hidden="true">↗</span></a>
+</div>
+<div class="skills-ladder" aria-label="Levels">{% for l in skills.ladder %}<span class="{% if l.reached %}reached{% endif %}">{% if l.reached %}✓ {% endif %}{{ l.name }} · {{ l.need }}</span>{% endfor %}</div>
+</section>
 <div class="dashboard-split">
 <section class="panel">
 <div class="panel-heading">

@@ -1,0 +1,58 @@
+{% extends "core/base.html" %}{% block title %}Personalize · LearnLoop{% endblock %}{% block content %}
+<div class="page-heading">
+<div>
+<div class="eyebrow">MAKE THE CARDS YOURS</div>
+<h1>Personalize your cards</h1>
+<p>Choose how deep explanations go and how they look. The preview updates as you click. Changes apply to new cards.</p>
+</div>
+</div>
+<div class="personalize-layout">
+<form method="post" class="personalize-form" data-personalize>{% csrf_token %}
+<fieldset class="panel option-group">
+<legend><h2>How deep should explanations go?</h2></legend>
+<div class="option-cards">{% for radio in form.explanation_depth %}
+<label class="option-card">{{ radio.tag }}<span class="option-body"><b>{{ radio.choice_label }}</b><span class="muted small">{% if radio.data.value == "brief" %}One sentence. The core idea, nothing else.{% elif radio.data.value == "standard" %}What it is, why it's used, and the mistake to avoid.{% else %}How it works under the hood, trade-offs and pitfalls.{% endif %}</span></span></label>{% endfor %}
+</div>
+</fieldset>
+<fieldset class="panel option-group">
+<legend><h2>Visuals</h2></legend>
+<label class="toggle-row">{{ form.show_diagrams }}<span class="option-body"><b>Diagrams</b><span class="muted small">A small flow or sequence diagram whenever a concept has steps, a lifecycle or a decision.</span></span></label>
+<label class="toggle-row">{{ form.use_analogies }}<span class="option-body"><b>Everyday analogies</b><span class="muted small">One line comparing the concept to something familiar.</span></span></label>
+</fieldset>
+<fieldset class="panel option-group">
+<legend><h2>In the terminal</h2></legend>
+<p class="muted small">What the Claude Code plugin prints after each turn. The full card is always on the web and in VS Code.</p>
+<div class="option-cards">{% for radio in form.terminal_detail %}
+<label class="option-card">{{ radio.tag }}<span class="option-body"><b>{{ radio.choice_label }}</b><span class="muted small">{% if radio.data.value == "compact" %}Summary, why it's here and a link.{% elif radio.data.value == "visual" %}Adds the diagram as a text flow and the "watch out".{% else %}Just the concept name and a link. Quietest.{% endif %}</span></span></label>{% endfor %}
+</div>
+</fieldset>
+<div class="row"><button type="submit">Save preferences</button><span class="muted small">Your skill level and daily limit live in <a href="{% url 'app-settings' %}">Settings</a>.</span></div>
+</form>
+<aside class="personalize-preview" aria-label="Preview">
+<div class="eyebrow">PREVIEW</div>
+<article class="panel preview-card">
+<div class="row"><span class="chip">Database</span></div>
+<h3>{{ sample.name }}</h3>
+<p data-when="depth:brief">{{ sample_brief }}</p>
+<p data-when="depth:standard">{{ sample.summary }}</p>
+<p data-when="depth:deep">{{ sample.summary }} Under the hood the database keeps a log so it can undo half-finished work, and holds locks while the transaction is open. The trade-off: long transactions block other writers.</p>
+<div class="preview-diagram" data-when="diagrams:on" data-diagram>
+<div class="diagram-frame" data-diagram-target hidden></div>
+<p class="muted small" data-diagram-status></p>
+<details open><summary class="muted small">Diagram source</summary><pre data-diagram-source>{{ sample.diagram }}</pre></details>
+</div>
+<p class="why-mini"><b>Why it's here:</b> <code>place_order()</code> takes stock and creates the order inside one transaction.</p>
+<div class="callout callout-warn" data-when="depth:!brief"><b>⚠ Watch out:</b> {{ sample.pitfall }}</div>
+<div class="callout" data-when="analogies:on"><b>Think of it like:</b> {{ sample.analogy }}</div>
+</article>
+<div class="eyebrow" style="margin-top:18px">TERMINAL</div>
+<pre class="terminal-preview"><span>💡 LearnLoop · {{ sample.name }}  [database]</span>
+<span data-when="terminal:!link depth:brief">{{ sample_brief }}
+</span><span data-when="terminal:!link depth:!brief">{{ sample.summary|truncatechars:150 }}
+</span><span data-when="terminal:!link">Here: place_order() takes stock and creates the order in one transaction.
+</span><span data-when="terminal:visual">{% for step in sample_flow|slice:":3" %}  ▸ {{ step }}
+{% endfor %}</span><span data-when="terminal:visual depth:!brief">⚠ Watch out: {{ sample.pitfall|truncatechars:110 }}
+</span><span>Read more → https://learnloop…/app/cards/42</span></pre>
+</aside>
+</div>{% endblock %}
+{% block scripts %}{% include "core/_mermaid.html" %}{% endblock %}

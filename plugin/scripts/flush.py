@@ -23,17 +23,25 @@ def _clip(text: str, limit: int) -> str:
     return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
 
 
-def format_card(card: dict) -> str:
-    """Compact ~6-8 line block that reads fine in a plain terminal."""
+def format_card(card: dict, detail: str = "compact") -> str:
+    """Card block for a plain terminal. `detail` comes from the user's Settings:
+    compact (~6 lines), visual (adds the diagram as a text flow + the pitfall), link (title + link only).
+    """
     head = f"💡 LearnLoop · {card.get('concept', 'New concept')}"
     if card.get("category"):
         head += f"  [{card['category']}]"
     lines = [head]
-    lines += textwrap.wrap(_clip(card.get("summary", ""), 260), WIDTH)
-    if card.get("why_here"):
-        lines += textwrap.wrap("Here: " + _clip(card["why_here"], 200), WIDTH)
+    if detail != "link":
+        lines += textwrap.wrap(_clip(card.get("summary", ""), 260), WIDTH)
+        if card.get("why_here"):
+            lines += textwrap.wrap("Here: " + _clip(card["why_here"], 200), WIDTH)
+    if detail == "visual":
+        for step in (card.get("flow") or [])[:3]:
+            lines += textwrap.wrap(_clip(step, 160), WIDTH, initial_indent="  ▸ ", subsequent_indent="    ")
+        if card.get("pitfall"):
+            lines += textwrap.wrap("⚠ Watch out: " + _clip(card["pitfall"], 180), WIDTH)
     if card.get("url"):
-        lines.append(f"Read more → {card['url']}")
+        lines.append(f"Read more & prove it (4-min check) → {card['url']}")
     return "\n".join(lines)
 
 
@@ -184,7 +192,8 @@ def main() -> None:
     cards = result.get("cards") or []
     save_acks(acks + [c["id"] for c in cards if isinstance(c.get("id"), int)])
     if cards:
-        print(json.dumps({"systemMessage": "\n\n".join(format_card(c) for c in cards)}))
+        detail = result.get("terminal") or "compact"
+        print(json.dumps({"systemMessage": "\n\n".join(format_card(c, detail) for c in cards)}))
     elif notice := notice_for(result, cfg):
         print(json.dumps({"systemMessage": notice}))
 

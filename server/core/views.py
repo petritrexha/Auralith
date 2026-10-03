@@ -4,6 +4,7 @@ Rule of thumb: every member query is filtered by request.user; every /manage vie
 """
 from __future__ import annotations
 
+import json
 from functools import wraps
 
 from django.contrib import messages
@@ -19,11 +20,13 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from core.agent import catalog, checker
 from core.agent.llm import ai_mode
 from core.agent.reporter import generate_report
-from core.forms import CreateUserForm, EditUserForm, SettingsForm
-from core.models import AnalyzeLog, Card, Concept, TeamReport, UserConcept
+from core.forms import CardStyleForm, CreateUserForm, EditUserForm, SettingsForm
+from core.models import CHECKLIST_SLUG_PREFIX, AnalyzeLog, Card, ComprehensionCheck, Concept, TeamReport, UserConcept
 from core.services import accounts, checklist, insights, knowledge
+from core.services.visuals import first_sentences, flow_lines
 
 User = get_user_model()
 
@@ -74,7 +77,8 @@ def first_login(request):
 def app_home(request):
     data = insights.member_insights(request.user)
     latest = Card.objects.filter(user=request.user).select_related("concept")[:3]
-    return render(request, "core/dashboard.html", {"i": data, "latest": latest})
+    skills = checklist.progress(knowledge.known_topic_slugs(request.user))
+    return render(request, "core/dashboard.html", {"i": data, "latest": latest, "skills": skills})
 
 
 @login_required
@@ -121,7 +125,10 @@ def card_detail(request, pk: int):
         card.read_at = timezone.now()
         card.save(update_fields=["read_at"])
     uc = UserConcept.objects.filter(user=request.user, concept=card.concept).first()
-    return render(request, "core/card_detail.html", {"card": card, "uc": uc})
+    last_check = card.checks.filter(user=request.user).exclude(status=ComprehensionCheck.Status.OPEN).first()
+    return render(request, "core/card_detail.html", {
+        "card": card, "uc": uc, "profile": knowledge.get_profile(request.user), "last_check": last_check,
+    })
 
 
 @login_required
@@ -156,44 +163,50 @@ def concept_action(request, slug: str):
 
 @login_required
 def concepts(request):
-    rows = (
-        UserConcept.objects.filter(user=request.user).select_related("concept")
-        # Ticked checklist topics that never came up in real work live in the checklist, not the library.
-        .exclude(concept__slug__in=list(checklist.TOPICS), seen_count=0)
-        .order_by("concept__category", "concept__name")
-    )
+    rows = UserConcept.objects.filter(user=request.user).from_work().select_related("concept").order_by("concept__category", "concept__name")
     grouped: dict[str, list] = {}
     for uc in rows:
         grouped.setdefault(uc.concept.get_category_display(), []).append(uc)
     counts = {s: rows.filter(status=s).count() for s in UserConcept.Status.values}
-    known = set(knowledge.known_topic_slugs(request.user))
-    sectors = [
-        {"sector": sector, "topics": [{"topic": t, "known": t.slug in known} for t in sector.topics],
-         "known_count": sum(t.slug in known for t in sector.topics)}
-        for sector in checklist.SECTORS
-    ]
+    ticked = set(knowledge.known_topic_slugs(request.user))
+    sectors = []
+    for sector in checklist.SECTORS:
+        topics = []
+        for general in sector.topics:
+            all_known = general.slug in ticked
+            skills = [{"topic": n, "own": n.slug in ticked, "known": all_known or n.slug in ticked} for n in general.children]
+            topics.append({"topic": general, "known": all_known, "skills": skills, "known_count": sum(s["known"] for s in skills)})
+        sectors.append({"sector": sector, "topics": topics, "total": len(sector.skills),
+                        "known_count": sum(t["known_count"] for t in topics)})
     return render(request, "core/concepts.html", {
-        "grouped": grouped, "counts": counts, "sectors": sectors,
-        "checklist_known": len(known), "checklist_total": len(checklist.TOPICS),
+        "grouped": grouped, "counts": counts, "sectors": sectors, "progress": checklist.progress(ticked),
     })
 
 
 @login_required
 @require_POST
 def concept_checklist(request):
-    """Tick/untick checklist topics. JS sends one topic at a time; without JS the whole form is saved."""
+    """Tick/untick checklist items. JS sends one item at a time; without JS the whole form is saved."""
+    before = checklist.progress(knowledge.known_topic_slugs(request.user))
     if "topic" in request.POST:
         slug = request.POST["topic"]
         if slug not in checklist.TOPICS:
             return JsonResponse({"error": "unknown topic"}, status=400)
         known = request.POST.get("known") == "1"
         knowledge.set_topic_known(request.user, slug, known)
-        return JsonResponse({"topic": slug, "known": known, "name": checklist.TOPICS[slug].name})
+        after = checklist.progress(knowledge.known_topic_slugs(request.user))
+        return JsonResponse({
+            "topic": slug, "known": known, "name": checklist.TOPICS[slug].name, "progress": after,
+            "level_up": after["level_index"] > before["level_index"],
+        })
     wanted = set(request.POST.getlist("topics")) & set(checklist.TOPICS)
     current = set(knowledge.known_topic_slugs(request.user))
     for slug in wanted ^ current:
+        if checklist.TOPICS[slug].parent in wanted:
+            continue  # shown as covered (disabled) under a ticked general topic, so the browser didn't send it
         knowledge.set_topic_known(request.user, slug, slug in wanted)
-    messages.success(request, "Checklist saved. Ticked topics won't be explained in your cards.")
+    after = checklist.progress(knowledge.known_topic_slugs(request.user))
+    messages.success(request, f"Checklist saved: {after['count']} skills known. {after['message']}")
     return redirect(reverse("concepts") + "#checklist")
 
 
@@ -228,6 +241,21 @@ def regenerate_token(request):
     request.session["new_token"] = raw
     messages.success(request, "New token created. Copy it now — it won't be shown again. Update LEARNLOOP_TOKEN.")
     return redirect("app-setup")
+
+
+@login_required
+def personalize(request):
+    """Choose how cards are written: depth, diagrams, analogies, terminal detail. Applies to new cards."""
+    profile = knowledge.get_profile(request.user)
+    form = CardStyleForm(request.POST or None, instance=profile)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Saved. Your next cards will be written this way.")
+        return redirect("personalize")
+    sample = catalog.BY_SLUG["db-transactions"]
+    return render(request, "core/personalize.html", {"form": form, "profile": profile, "sample": sample,
+                                                      "sample_brief": first_sentences(sample.summary, 1),
+                                                      "sample_flow": flow_lines(sample.diagram)})
 
 
 @login_required
@@ -268,7 +296,8 @@ def org_insights_json(request):
 def manage_users(request):
     users = User.objects.select_related("profile").annotate(
         cards_received=Count("cards", distinct=True),
-        mastered=Count("user_concepts", filter=Q(user_concepts__status=UserConcept.Status.KNOWN), distinct=True),
+        mastered=Count("user_concepts", filter=Q(user_concepts__status=UserConcept.Status.KNOWN)
+                       & ~Q(user_concepts__concept__slug__startswith=CHECKLIST_SLUG_PREFIX), distinct=True),
     ).order_by("email")
     q = request.GET.get("q", "").strip()
     role = request.GET.get("role", "")
@@ -343,7 +372,7 @@ def manage_concepts(request):
     rows = Concept.objects.annotate(
         exposed=Count("user_concepts", distinct=True),
         mastered=Count("user_concepts", filter=Q(user_concepts__status=UserConcept.Status.KNOWN), distinct=True),
-    ).filter(exposed__gt=0).order_by("-exposed", "name")
+    ).filter(exposed__gt=0).exclude(slug__startswith=CHECKLIST_SLUG_PREFIX).order_by("-exposed", "name")
     for r in rows:
         r.mastery_rate = int(100 * r.mastered / r.exposed) if r.exposed else 0
     return render(request, "core/manage_concepts.html", {"rows": rows})
@@ -368,3 +397,81 @@ def manage_activity(request):
     """The agent's decision trace per /analyze call — the 'show me it's agentic' page for demos."""
     logs = AnalyzeLog.objects.select_related("user")[:50]
     return render(request, "core/manage_activity.html", {"logs": logs})
+
+
+# ---------------------------------------------------------------------------
+# Comprehension checks ("explain it in your own words")
+# ---------------------------------------------------------------------------
+@login_required
+@require_POST
+def check_start(request, pk: int):
+    card = get_object_or_404(Card, pk=pk, user=request.user)
+    try:
+        check = checker.start_check(request.user, card)
+    except checker.CheckError as exc:
+        messages.info(request, str(exc))
+        return redirect("card-detail", pk=pk)
+    return redirect("check", pk=check.pk)
+
+
+@login_required
+def check_page(request, pk: int):
+    check = get_object_or_404(ComprehensionCheck.objects.select_related("card__concept"), pk=pk, user=request.user)
+    if check.status != ComprehensionCheck.Status.OPEN:
+        return redirect("check-result", pk=pk)
+    remaining = max(int((check.deadline - timezone.now()).total_seconds()), 0)
+    return render(request, "core/check.html", {"check": check, "remaining": remaining})
+
+
+@login_required
+@require_POST
+def check_submit(request, pk: int):
+    check = get_object_or_404(ComprehensionCheck.objects.select_related("card__concept"), pk=pk, user=request.user)
+    try:
+        telemetry = json.loads(request.POST.get("telemetry") or "{}")
+        if not isinstance(telemetry, dict):
+            telemetry = {}
+    except json.JSONDecodeError:
+        telemetry = {}
+    try:
+        checker.submit_check(check, request.POST.get("answer", ""), telemetry)
+    except checker.CheckError as exc:
+        messages.info(request, str(exc))
+    return redirect("check-result", pk=pk)
+
+
+@login_required
+def check_result(request, pk: int):
+    check = get_object_or_404(ComprehensionCheck.objects.select_related("card__concept"), pk=pk, user=request.user)
+    if check.status == ComprehensionCheck.Status.OPEN:
+        return redirect("check", pk=pk)
+    return render(request, "core/check_result.html", {"check": check})
+
+
+@staff_required
+def manage_checks(request):
+    checks = ComprehensionCheck.objects.select_related("user", "card__concept").exclude(status=ComprehensionCheck.Status.OPEN)
+    only = request.GET.get("only", "")
+    if only == "attention":
+        checks = checks.exclude(integrity=ComprehensionCheck.Integrity.CLEAN)
+    return render(request, "core/manage_checks.html", {"checks": checks[:100], "only": only})
+
+
+@staff_required
+@require_POST
+def manage_check_review(request, pk: int):
+    """Admin decision on a flagged/review check: accept (verify) or keep unverified."""
+    check = get_object_or_404(ComprehensionCheck.objects.select_related("card__concept", "user"), pk=pk)
+    if request.POST.get("decision") == "accept" and (check.score or 0) >= checker.PASS_AT:
+        uc = knowledge.set_status(check.user, check.card.concept, UserConcept.Status.KNOWN)
+        uc.verified_at = timezone.now()
+        uc.save(update_fields=["verified_at"])
+        check.status, check.integrity = ComprehensionCheck.Status.PASSED, ComprehensionCheck.Integrity.CLEAN
+        check.integrity_signals = check.integrity_signals + [f"Accepted by {request.user.email} after review."]
+        check.save(update_fields=["status", "integrity", "integrity_signals"])
+        messages.success(request, "Accepted — concept marked as verified.")
+    else:
+        check.integrity_signals = check.integrity_signals + [f"Kept unverified by {request.user.email}."]
+        check.save(update_fields=["integrity_signals"])
+        messages.info(request, "Kept as unverified.")
+    return redirect("manage-checks")

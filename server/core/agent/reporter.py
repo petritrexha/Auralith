@@ -114,7 +114,7 @@ def _mock_report(days: int) -> tuple[str, str, dict]:
         if p["open_concepts"]:
             actions.append(f"- {p['name']} could use support on {', '.join(p['open_concepts'][:2])} — suggest reviewing their LearnLoop cards together.")
     lines += actions or ["- Keep going — nothing urgent this week."]
-    learned = UserConcept.objects.filter(status=UserConcept.Status.KNOWN, known_at__gte=timezone.now() - timedelta(days=days)).count()
+    learned = UserConcept.objects.from_work().filter(status=UserConcept.Status.KNOWN, known_at__gte=timezone.now() - timedelta(days=days)).count()
     lines += ["", "### Wins", f"- {learned} concepts marked as understood this period."]
     title = f"Team comprehension briefing — {timezone.localdate():%d %b %Y}"
     return title, "\n".join(lines), org

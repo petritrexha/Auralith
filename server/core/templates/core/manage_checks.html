@@ -1,0 +1,29 @@
+{% extends "core/base.html" %}{% block title %}Comprehension checks · LearnLoop{% endblock %}{% block content %}
+<div class="page-heading">
+<div>
+<div class="eyebrow">VERIFIED, NOT SELF-REPORTED</div>
+<h1>Comprehension checks</h1>
+<p>Developers explain AI-written code in their own words and the agent grades it. Integrity signals never fail anyone automatically — they decide whether a pass counts as <b>verified</b>.</p>
+</div>
+<div class="row"><a class="btn ghost" href="?">All</a><a class="btn" href="?only=attention">Needs review</a></div>
+</div>{% include "core/_manage_nav.html" %}
+{% for c in checks %}
+<details class="panel" style="margin-bottom:12px">
+<summary class="row">
+<b>{{ c.user.get_full_name|default:c.user.email }}</b><span class="muted">·</span>{{ c.card.concept.name }}
+<span class="chip {% if c.status == 'passed' %}known{% elif c.status == 'unverified' or c.status == 'partial' %}seen{% endif %}">{{ c.get_status_display }}</span>
+<span class="chip">{{ c.score|default_if_none:"–" }}/100</span>
+<span class="chip {% if c.integrity == 'clean' %}known{% elif c.integrity == 'review' %}seen{% else %}new{% endif %}">integrity: {{ c.integrity }} ({{ c.suspicion }})</span>
+<span class="muted small">{{ c.submitted_at|timesince }} ago · {{ c.mode }}</span>
+</summary>
+<section class="detail-section"><h2 class="eyebrow">QUESTION</h2><p>{{ c.question }}</p>
+<h2 class="eyebrow">ANSWER</h2><p>{{ c.answer|default:"(empty)" }}</p>
+<p class="muted small">Correctness {{ c.rubric.correctness }}/50 · Application {{ c.rubric.application }}/30 · Reasoning {{ c.rubric.reasoning }}/20 — {{ c.feedback }}</p></section>
+{% if c.integrity_signals %}<section class="callout{% if c.integrity != 'clean' %} callout-warn{% endif %}"><h2 class="eyebrow">INTEGRITY SIGNALS</h2><ul>{% for s in c.integrity_signals %}<li>{{ s }}</li>{% endfor %}</ul></section>{% endif %}
+<details><summary class="muted small">Raw typing data</summary><pre>{{ c.telemetry }}</pre></details>
+{% if c.integrity != "clean" %}<form method="post" action="{% url 'manage-check-review' c.pk %}" class="row" style="margin-top:10px">{% csrf_token %}
+{% if c.score >= 70 %}<button name="decision" value="accept">Accept as verified</button>{% endif %}
+<button class="ghost" name="decision" value="keep">Keep unverified</button></form>{% endif %}
+</details>
+{% empty %}{% include "core/_empty.html" with empty_title="No checks yet" empty_text="When developers take a check on a card, it shows up here." %}{% endfor %}
+{% endblock %}

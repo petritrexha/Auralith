@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from core.models import AnalyzeLog, Card, Concept, Profile, TeamReport, UserConcept
+from core.models import AnalyzeLog, Card, ComprehensionCheck, Concept, Profile, TeamReport, UserConcept
 
 
 @admin.register(Profile)
@@ -39,3 +39,9 @@ class AnalyzeLogAdmin(admin.ModelAdmin):
 @admin.register(TeamReport)
 class TeamReportAdmin(admin.ModelAdmin):
     list_display = ("title", "created_at", "mode", "period_days")
+
+
+@admin.register(ComprehensionCheck)
+class ComprehensionCheckAdmin(admin.ModelAdmin):
+    list_display = ("id", "user", "card", "status", "score", "integrity", "suspicion", "mode", "submitted_at")
+    list_filter = ("status", "integrity", "mode")

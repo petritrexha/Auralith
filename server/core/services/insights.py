@@ -13,7 +13,7 @@ from django.db.models import Count, Q, Sum
 from django.db.models.functions import TruncDate
 from django.utils import timezone
 
-from core.models import AnalyzeLog, Card, Concept, UserConcept
+from core.models import CHECKLIST_SLUG_PREFIX, AnalyzeLog, Card, Concept, UserConcept
 
 User = get_user_model()
 S = UserConcept.Status
@@ -40,9 +40,10 @@ def streak_days(user) -> int:
 
 
 def member_insights(user, days: int = 30) -> dict:
-    ucs = UserConcept.objects.filter(user=user)
+    ucs = UserConcept.objects.filter(user=user).from_work()
     surfaced = ucs.count()
     known = ucs.filter(status=S.KNOWN).count()
+    verified = ucs.filter(status=S.KNOWN, verified_at__isnull=False).count()
     muted = ucs.filter(status=S.MUTED).count()
     since = timezone.now() - timedelta(days=days)
 
@@ -72,6 +73,8 @@ def member_insights(user, days: int = 30) -> dict:
         "known": known,
         "muted": muted,
         "mastery_rate": _rate(known, surfaced),
+        "verified": verified,
+        "verified_rate": _rate(verified, surfaced),
         "comprehension_debt": max(surfaced - known - muted, 0),
         "cards_total": Card.objects.filter(user=user).count(),
         "unread_cards": Card.objects.filter(user=user, read_at__isnull=True).count(),
@@ -128,7 +131,7 @@ def needs_attention(days: int = 30, limit: int = 5) -> list[dict]:
     """Members with high exposure and low mastery. Framed as support, never as a leaderboard."""
     rows = []
     for user in User.objects.filter(is_active=True):
-        ucs = UserConcept.objects.filter(user=user)
+        ucs = UserConcept.objects.filter(user=user).from_work()
         surfaced = ucs.count()
         if surfaced < 3:
             continue
@@ -150,9 +153,12 @@ def needs_attention(days: int = 30, limit: int = 5) -> list[dict]:
 def org_insights(days: int = 30) -> dict:
     now = timezone.now()
     since = now - timedelta(days=days)
-    ucs = UserConcept.objects.all()
+    ucs = UserConcept.objects.from_work()
     surfaced = ucs.count()
     known = ucs.filter(status=S.KNOWN).count()
+    verified = ucs.filter(status=S.KNOWN, verified_at__isnull=False).count()
+    from core.models import ComprehensionCheck  # local import keeps module import order simple
+    checks = ComprehensionCheck.objects.filter(submitted_at__gte=since)
 
     common = list(
         Concept.objects.annotate(
@@ -160,6 +166,7 @@ def org_insights(days: int = 30) -> dict:
             mastered=Count("user_concepts", filter=Q(user_concepts__status=S.KNOWN), distinct=True),
         )
         .filter(exposed__gt=0)
+        .exclude(slug__startswith=CHECKLIST_SLUG_PREFIX)
         .order_by("-exposed", "name")
         .values("name", "slug", "category", "exposed", "mastered")[:10]
     )
@@ -185,6 +192,13 @@ def org_insights(days: int = 30) -> dict:
         "surfaced": surfaced,
         "known": known,
         "org_mastery_rate": _rate(known, surfaced),
+        "verified": verified,
+        "verified_rate": _rate(verified, surfaced),
+        "checks": {
+            "taken": checks.count(),
+            "passed": checks.filter(status=ComprehensionCheck.Status.PASSED).count(),
+            "needs_review": checks.filter(status=ComprehensionCheck.Status.UNVERIFIED).count(),
+        },
         "comprehension_debt": ucs.exclude(status__in=[S.KNOWN, S.MUTED]).count(),
         "most_common_concepts": common,
         "by_category": [

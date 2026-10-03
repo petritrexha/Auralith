@@ -32,6 +32,18 @@ class EditUserForm(forms.Form):
     daily_card_limit = forms.IntegerField(min_value=0, max_value=50)
 
 
+class CardStyleForm(forms.ModelForm):
+    """Personalize page: how cards are written and shown."""
+
+    class Meta:
+        model = Profile
+        fields = ["explanation_depth", "show_diagrams", "use_analogies", "terminal_detail"]
+        widgets = {
+            "explanation_depth": forms.RadioSelect,
+            "terminal_detail": forms.RadioSelect,
+        }
+
+
 class SettingsForm(forms.ModelForm):
     class Meta:
         model = Profile

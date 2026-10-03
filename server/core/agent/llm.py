@@ -120,6 +120,37 @@ def run_tool_loop(
     return run
 
 
+def complete_json(system: str, user_message: str, max_tokens: int = 800, timeout: float = 20.0) -> tuple[dict | None, Usage]:
+    """One-shot call that must return a JSON object. Returns (None, usage) on any failure."""
+    import json
+    import re
+
+    usage = Usage()
+    try:
+        client = _client()
+        resp = client.messages.create(
+            model=settings.LEARNLOOP["MODEL"],
+            max_tokens=max_tokens,
+            system=system + "\n\nRespond with ONE JSON object and nothing else.",
+            messages=[{"role": "user", "content": user_message}],
+            timeout=timeout,
+        )
+    except Exception as exc:
+        log.warning("LLM JSON call failed: %s", exc)
+        return None, usage
+    usage.calls = 1
+    usage.input_tokens = getattr(resp.usage, "input_tokens", 0) or 0
+    usage.output_tokens = getattr(resp.usage, "output_tokens", 0) or 0
+    text = "".join(getattr(b, "text", "") for b in resp.content if getattr(b, "type", "") == "text")
+    match = re.search(r"\{[\s\S]*\}", text)
+    if not match:
+        return None, usage
+    try:
+        return json.loads(match.group(0)), usage
+    except json.JSONDecodeError:
+        return None, usage
+
+
 def _short(value: Any, limit: int = 400) -> Any:
     """Keep traces small enough to store and show."""
     import json

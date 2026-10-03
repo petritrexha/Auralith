@@ -22,7 +22,7 @@
 <div class="panel stat">
 <span class="stat-label">Organization mastery</span>
 <b>{{ o.org_mastery_rate|pct }}</b>
-<span class="stat-foot positive">{{ o.known }} of {{ o.surfaced }} exposures known</span>
+<span class="stat-foot positive">{{ o.known }} of {{ o.surfaced }} known · {{ o.verified_rate|pct }} verified · <a href="{% url 'manage-checks' %}?only=attention">{{ o.checks.needs_review }} to review</a></span>
 </div>
 <div class="panel stat">
 <span class="stat-label">Open concepts</span>

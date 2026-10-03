@@ -8,7 +8,14 @@
 <section class="detail-section">
 <h2 class="eyebrow">THE CONCEPT</h2>
 <p>{{ card.summary }}</p>
-</section>
+</section>{% if card.diagram_mermaid and profile.show_diagrams %}
+<section class="detail-section diagram-section" data-diagram>
+<h2 class="eyebrow">AT A GLANCE</h2>
+<div class="diagram-frame" data-diagram-target hidden></div>
+<p class="muted small" data-diagram-status role="status"></p>
+<details open>
+<summary class="muted small">Diagram source</summary><pre data-diagram-source>{{ card.diagram_mermaid }}</pre></details>
+</section>{% endif %}
 <section class="why detail-section">
 <h2 class="eyebrow">WHY THIS IS HERE</h2>
 <p>{{ card.why_here }}</p>
@@ -18,24 +25,33 @@
 <h2 class="eyebrow" style="margin:0">IN YOUR CODE</h2>
 <button class="ghost" data-copy="code-snippet">Copy code</button>
 </div>
-<p class="mono muted small">{{ card.file_path }}</p><pre id="code-snippet"><code>{{ card.code_snippet }}</code></pre></section>{% endif %}{% if card.diagram_mermaid %}
-<section class="detail-section">
-<h2 class="eyebrow">THE BIG PICTURE</h2>
-<div id="diagram-render" class="mermaid" hidden>
-</div>
-<details id="diagram-source" open>
-<summary class="muted small">Diagram source</summary><pre id="mermaid-source">{{ card.diagram_mermaid }}</pre></details>
-<p id="diagram-status" class="muted small" role="status">
-</p>
-</section>{% endif %}{% if card.doc_url %}
+<p class="mono muted small">{{ card.file_path }}</p><pre id="code-snippet"><code>{{ card.code_snippet }}</code></pre></section>{% endif %}{% if card.pitfall or card.analogy and profile.use_analogies %}
+<div class="callouts detail-section">{% if card.pitfall %}
+<section class="callout callout-warn">
+<h2 class="eyebrow">⚠ WATCH OUT</h2>
+<p>{{ card.pitfall }}</p>
+</section>{% endif %}{% if card.analogy and profile.use_analogies %}
+<section class="callout">
+<h2 class="eyebrow">THINK OF IT LIKE</h2>
+<p>{{ card.analogy }}</p>
+</section>{% endif %}
+</div>{% endif %}{% if card.doc_url %}
 <section class="detail-section">
 <h2 class="eyebrow">GO A LITTLE DEEPER</h2>
 <a class="btn ghost" href="{{ card.doc_url }}" target="_blank" rel="noopener noreferrer">Read the documentation ↗</a>
 </section>{% endif %}</article>
 <aside class="panel detail-actions">
+<section class="callout" style="margin-bottom:18px">
+<h2 class="eyebrow">🧠 PROVE IT</h2>
+{% if uc.is_verified %}<p><span class="chip known">✓ Verified {{ uc.verified_at|timesince }} ago</span></p>
+<p class="muted small">You explained this in your own words and the agent confirmed it.</p>
+{% else %}<p class="small">Explain it in your own words: one question about your code, about 4 minutes, graded by the agent. A pass marks it <b>verified</b> for your team.</p>
+<form method="post" action="{% url 'check-start' card.pk %}">{% csrf_token %}<button>Start the check</button></form>{% endif %}
+{% if last_check %}<p class="muted small" style="margin-top:8px">Last attempt: <a href="{% url 'check-result' last_check.pk %}">{{ last_check.get_status_display }}{% if last_check.score is not None %} · {{ last_check.score }}/100{% endif %}</a></p>{% endif %}
+</section>
 <h3>Make it part of your toolkit.</h3>
-<p class="muted small">Your feedback shapes what LearnLoop explains next.</p>
-<form method="post" action="{% url 'card-action' card.pk %}">{% csrf_token %}<button name="action" value="known">✓ I know this</button>
+<p class="muted small">Your feedback shapes what LearnLoop explains next. <a href="{% url 'personalize' %}">Change how cards are written</a>.</p>
+<form method="post" action="{% url 'card-action' card.pk %}">{% csrf_token %}<button class="ghost" name="action" value="known" title="Self-reported — doesn't count as verified">✓ I know this</button>
 <button class="ghost" name="action" value="mute">Mute concept</button>{% if card.saved %}<button class="ghost" name="action" value="unsave">Remove from saved</button>{% else %}<button class="ghost" name="action" value="save">Save for later</button>{% endif %}</form>
 <dl class="metadata">
 <dt>Created</dt>
@@ -47,4 +63,4 @@
 </dl>
 </aside>
 </div>{% endblock %}
-{% block scripts %}{% if card.diagram_mermaid %}<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js" defer></script><script>window.addEventListener('load', async () => {const source=document.getElementById('mermaid-source'), target=document.getElementById('diagram-render'), status=document.getElementById('diagram-status'); if(!window.mermaid){status.textContent='Diagram preview unavailable. The diagram source is shown above.';return;}try{mermaid.initialize({startOnLoad:false,theme:'dark',securityLevel:'strict',suppressErrorRendering:true});const result=await mermaid.render('learning-diagram',source.textContent);target.innerHTML=result.svg;target.hidden=false;document.getElementById('diagram-source').open=false;}catch{status.textContent='This diagram could not be rendered. You can still read its source above.';}});</script>{% endif %}{% endblock %}
+{% block scripts %}{% if card.diagram_mermaid and profile.show_diagrams %}{% include "core/_mermaid.html" %}{% endif %}{% endblock %}

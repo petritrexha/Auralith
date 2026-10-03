@@ -28,6 +28,7 @@ from django.utils import timezone
 from core.models import AnalyzeLog, Card
 from core.services import knowledge
 from core.services.scrub import is_secret_file, scrub_text
+from core.services.visuals import clean_mermaid, first_sentences
 
 from . import catalog
 from .llm import ai_mode, run_tool_loop
@@ -117,15 +118,18 @@ def save_card(ctx: AnalyzeContext, data: dict, *, doc_verified: bool = False) ->
     if not snippet and change:
         snippet = snippet_from(change["diff"])
     snippet = scrub_text("\n".join(snippet.splitlines()[:15]))
+    style = card_style(ctx.profile, data)
 
     concept = knowledge.get_or_create_concept(name, slug, str(data.get("category") or "other"))
     knowledge.record_exposure(ctx.user, concept)
     card = Card.objects.create(
         user=ctx.user,
         concept=concept,
-        summary=str(data.get("summary") or "").strip()[:1200],
+        summary=style["summary"],
         why_here=str(data.get("why_here") or "").strip()[:800],
-        diagram_mermaid=str(data.get("diagram_mermaid") or "").strip()[:1500],
+        diagram_mermaid=style["diagram"],
+        pitfall=style["pitfall"],
+        analogy=style["analogy"],
         doc_url=str(data.get("doc_url") or "").strip()[:500],
         doc_verified=doc_verified,
         code_snippet=snippet,
@@ -135,6 +139,39 @@ def save_card(ctx: AnalyzeContext, data: dict, *, doc_verified: bool = False) ->
     ctx.created.append(card)
     ctx.cards_left -= 1
     return {"ok": True, "card_id": card.pk, "cards_left": ctx.cards_left}
+
+
+def card_style(profile, data: dict) -> dict:
+    """Apply the person's card preferences no matter what the model returned."""
+    summary = str(data.get("summary") or "").strip()[:1500]
+    brief = profile.explanation_depth == "brief"
+    return {
+        "summary": first_sentences(summary, 1) if brief else summary,
+        "diagram": clean_mermaid(str(data.get("diagram_mermaid") or "")) if profile.show_diagrams else "",
+        "pitfall": "" if brief else str(data.get("pitfall") or "").strip()[:400],
+        "analogy": str(data.get("analogy") or "").strip()[:300] if profile.use_analogies else "",
+    }
+
+
+DEPTH_RULES = {
+    "brief": "summary: ONE short sentence (max ~30 words), just the core idea. Leave pitfall empty.",
+    "standard": "summary: 3-4 plain sentences: what it is and why people use it. pitfall: the one mistake people make most.",
+    "deep": ("summary: 5-7 sentences: what it is, how it works under the hood, and the main trade-off or alternative. "
+             "pitfall: the most costly mistake and how to avoid it."),
+}
+
+
+def preference_rules(profile) -> str:
+    rules = [f"- Depth ({profile.explanation_depth}): {DEPTH_RULES.get(profile.explanation_depth, DEPTH_RULES['standard'])}"]
+    if profile.show_diagrams:
+        rules.append("- Diagrams ON: add diagram_mermaid whenever the concept has a flow, sequence, lifecycle, decision or "
+                     "relationship (most do). Use `graph LR`, `graph TD` or `sequenceDiagram`; max 6 nodes; short plain labels; "
+                     "label decision edges (|yes| / |no|); no styling, no click handlers. Name nodes after things in THIS code when you can.")
+    else:
+        rules.append("- Diagrams OFF: never include diagram_mermaid.")
+    rules.append("- Analogies ON: add one short everyday analogy in `analogy`." if profile.use_analogies
+                 else "- Analogies OFF: leave `analogy` empty.")
+    return "\n".join(rules)
 
 
 # ---------------------------------------------------------------------------
@@ -204,12 +241,14 @@ TOOLS = [
                 "concept_name": {"type": "string", "description": "Human name, e.g. 'JWT refresh token rotation'"},
                 "slug": {"type": "string", "description": "kebab-case id, stable across users"},
                 "category": {"type": "string", "enum": ["auth", "database", "frontend", "api", "devops", "testing", "security", "other"]},
-                "summary": {"type": "string", "description": "3-4 plain sentences: what the concept is and why people use it."},
+                "summary": {"type": "string", "description": "What the concept is and why people use it. Length follows the depth preference."},
                 "why_here": {"type": "string", "description": "1-2 sentences tying it to THIS code: which file/function and what it does here."},
                 "file_path": {"type": "string"},
                 "code_snippet": {"type": "string", "description": "<=10 lines copied from the diff that show the concept."},
                 "doc_url": {"type": "string"},
-                "diagram_mermaid": {"type": "string", "description": "Optional tiny Mermaid diagram (graph LR / sequenceDiagram), max ~6 nodes."},
+                "diagram_mermaid": {"type": "string", "description": "Tiny Mermaid diagram (graph LR / graph TD / sequenceDiagram), max 6 nodes. Follow the diagram preference."},
+                "pitfall": {"type": "string", "description": "One sentence: the most common mistake with this concept, starting with the mistake itself."},
+                "analogy": {"type": "string", "description": "One sentence everyday comparison, e.g. 'Like a bank teller who...'."},
             },
             "required": ["concept_name", "slug", "category", "summary", "why_here", "file_path"],
         },
@@ -234,6 +273,9 @@ Developer skill level: {skill}
 Concepts this developer already knows or muted (never teach these): {known}
 Whole topics they ticked as known on their skill checklist (never teach anything inside these): {topics}
 Cards you may create this turn: {cards_left}
+
+How this developer wants cards written (follow exactly):
+{preferences}
 
 How to work:
 1. Read the changes. List 1-3 candidate concepts that are genuinely *used* in the new code (patterns, techniques,
@@ -304,6 +346,7 @@ def _run_live(ctx: AnalyzeContext, deadline: float):
         known=", ".join(knowledge.known_slugs(ctx.user)) or "(none yet)",
         topics="; ".join(knowledge.known_topic_names(ctx.user)) or "(none)",
         cards_left=ctx.cards_left,
+        preferences=preference_rules(ctx.profile),
     )
     return run_tool_loop(
         system=system,
@@ -368,7 +411,7 @@ def _run_mock(ctx: AnalyzeContext):
                 "concept_name": entry.name, "slug": entry.slug, "category": entry.category,
                 "summary": entry.summary, "why_here": why, "file_path": ch["file"],
                 "code_snippet": snippet_from(ch["diff"], line), "doc_url": entry.doc_url,
-                "diagram_mermaid": entry.diagram,
+                "diagram_mermaid": entry.diagram, "pitfall": entry.pitfall, "analogy": entry.analogy,
             },
             doc_verified=True,
         )

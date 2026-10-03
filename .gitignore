@@ -6,3 +6,4 @@ server/db.sqlite3
 server/.env
 server/staticfiles/
 .DS_Store
+*.vsix

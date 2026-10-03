@@ -1,0 +1,30 @@
+{% extends "core/base.html" %}
+{% block title %}Result · {{ check.card.concept.name }} · LearnLoop{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'card-detail' check.card.pk %}">← Back to the card</a>
+<div class="page-heading">
+<div>
+<div class="eyebrow">PROVE IT · {{ check.card.concept.name|upper }}</div>
+<h1>{% if check.status == "passed" %}Verified. You've got this.{% elif check.status == "unverified" %}Good answer — but we couldn't verify it.{% elif check.status == "partial" %}Almost there.{% elif check.status == "expired" %}Time ran out.{% else %}Not yet — that's how learning works.{% endif %}</h1>
+</div>
+{% if check.score is not None %}<span class="chip {% if check.status == 'passed' %}known{% else %}seen{% endif %}">{{ check.score }}/100</span>{% endif %}
+</div>
+<article class="panel" style="max-width:780px">
+{% if check.score is not None %}
+<div class="grid stats">
+<div class="panel stat"><span class="stat-label">Correctness</span><b>{{ check.rubric.correctness }}<span>/50</span></b></div>
+<div class="panel stat"><span class="stat-label">Applies to your code</span><b>{{ check.rubric.application }}<span>/30</span></b></div>
+<div class="panel stat"><span class="stat-label">Your own reasoning</span><b>{{ check.rubric.reasoning }}<span>/20</span></b></div>
+</div>{% endif %}
+{% if check.feedback %}<section class="why detail-section"><h2 class="eyebrow">FEEDBACK</h2><p>{{ check.feedback }}</p>
+{% if check.missed_points %}<p class="muted small">Worth adding: {{ check.missed_points|join:" · " }}</p>{% endif %}</section>{% endif %}
+<section class="detail-section"><h2 class="eyebrow">THE QUESTION</h2><p>{{ check.question }}</p>
+<h2 class="eyebrow">YOUR ANSWER</h2><p class="muted">{{ check.answer|default:"(empty)" }}</p></section>
+{% if check.integrity != "clean" %}
+<section class="callout callout-warn detail-section"><h2 class="eyebrow">WHY IT WASN'T COUNTED AS VERIFIED</h2>
+<ul>{% for s in check.integrity_signals %}<li>{{ s }}</li>{% endfor %}</ul>
+<p class="muted small">Your admin can review it. To verify it yourself, start a new check, type it yourself and stay on the page.</p></section>
+{% endif %}
+{% if check.status != "passed" %}<form method="post" action="{% url 'check-start' check.card.pk %}">{% csrf_token %}<button>Try a new question</button></form>{% endif %}
+</article>
+{% endblock %}

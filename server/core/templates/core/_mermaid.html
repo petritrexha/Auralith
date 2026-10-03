@@ -1,0 +1,32 @@
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js" defer></script>
+<script>
+/* Renders every [data-diagram] block: source in [data-diagram-source], SVG goes to [data-diagram-target]. */
+window.addEventListener('load', async () => {
+  const blocks = [...document.querySelectorAll('[data-diagram]')];
+  const say = (block, text) => { const s = block.querySelector('[data-diagram-status]'); if (s) s.textContent = text; };
+  if (!blocks.length) return;
+  if (!window.mermaid) { blocks.forEach(b => say(b, 'Diagram preview unavailable offline. Its source is below.')); return; }
+  const css = getComputedStyle(document.documentElement), v = name => css.getPropertyValue(name).trim();
+  mermaid.initialize({
+    startOnLoad: false, securityLevel: 'strict', suppressErrorRendering: true, theme: 'base',
+    flowchart: {curve: 'basis', htmlLabels: false, padding: 12}, sequence: {mirrorActors: false},
+    themeVariables: {
+      darkMode: true, background: v('--panel'), fontFamily: '-apple-system,"Segoe UI",sans-serif', fontSize: '14px',
+      primaryColor: '#1f2a25', primaryTextColor: v('--text'), primaryBorderColor: v('--accent'), lineColor: v('--muted'),
+      secondaryColor: '#22302a', tertiaryColor: v('--panel'), edgeLabelBackground: v('--panel'),
+      actorBkg: '#1f2a25', actorBorder: v('--accent'), actorTextColor: v('--text'), actorLineColor: v('--line'),
+      signalColor: v('--muted'), signalTextColor: v('--text'), noteBkgColor: v('--line'), noteTextColor: v('--text'),
+    },
+  });
+  let n = 0;
+  for (const block of blocks) {
+    const source = block.querySelector('[data-diagram-source]'), target = block.querySelector('[data-diagram-target]');
+    try {
+      const {svg} = await mermaid.render(`ll-diagram-${n++}`, source.textContent);
+      target.innerHTML = svg; target.hidden = false;
+      const details = source.closest('details'); if (details) details.open = false;
+      say(block, '');
+    } catch { say(block, 'This diagram could not be drawn. Its source is below.'); }
+  }
+});
+</script>

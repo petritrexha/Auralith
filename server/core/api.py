@@ -15,8 +15,9 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 
 from core.agent.analyzer import analyze
-from core.models import Card, Profile, hash_token
-from core.services import knowledge
+from core.models import Card, Profile, UserConcept, hash_token
+from core.services import checklist, knowledge
+from core.services.visuals import flow_lines
 
 log = logging.getLogger("core.api")
 MAX_BODY_BYTES = 400_000
@@ -98,12 +99,13 @@ def analyze_view(request):
         cards, log_row = analyze(request.user, session_id, changes, agent_message)
     except Exception:  # the plugin must never see a 500 it can't handle
         log.exception("analyze failed")
-        return JsonResponse({"cards": [_card_json(c) for c in missed], "outcome": "error"})
+        return JsonResponse({"cards": [_card_json(c, request.profile) for c in missed], "outcome": "error"})
 
     return JsonResponse({
-        "cards": [_card_json(c) for c in [*missed, *cards]],
+        "cards": [_card_json(c, request.profile) for c in [*missed, *cards]],
         "outcome": log_row.outcome,
         "mode": log_row.mode,
+        "terminal": request.profile.terminal_detail,  # how much the plugin prints: compact | visual | link
     })
 
 
@@ -127,7 +129,8 @@ def _undelivered(user) -> list[Card]:
     return [c for c in recent if not knowledge.is_blocked(user, c.concept.slug)][:MAX_REDELIVER]
 
 
-def _card_json(c: Card) -> dict:
+def _card_json(c: Card, profile=None) -> dict:
+    diagram = c.diagram_mermaid if (profile is None or profile.show_diagrams) else ""
     return {
         "id": c.pk,
         "concept": c.concept.name,
@@ -135,7 +138,70 @@ def _card_json(c: Card) -> dict:
         "summary": c.summary,
         "why_here": c.why_here,
         "file": c.file_path,
-        "diagram": c.diagram_mermaid,
+        "diagram": diagram,
+        "flow": flow_lines(diagram),
+        "pitfall": c.pitfall,
+        "analogy": c.analogy if (profile is None or profile.use_analogies) else "",
         "doc_url": c.doc_url,
         "url": c.public_url,
     }
+
+
+# ---------------------------------------------------------------------------
+# Editor integrations (VS Code extension): read cards and act on them with the same token.
+# ---------------------------------------------------------------------------
+CARD_ACTIONS = {"read", "known", "mute", "save", "unsave"}
+
+
+@require_GET
+@token_required
+def cards_view(request):
+    try:
+        limit = max(1, min(int(request.GET.get("limit", 30)), 100))
+    except ValueError:
+        limit = 30
+    cards = list(Card.objects.filter(user=request.user).select_related("concept")[:limit])
+    statuses = dict(
+        UserConcept.objects.filter(user=request.user, concept__in=[c.concept_id for c in cards]).values_list("concept_id", "status")
+    )
+    return JsonResponse({
+        "cards": [
+            {
+                **_card_json(c, request.profile),
+                "snippet": c.code_snippet,
+                "created_at": c.created_at.isoformat(),
+                "read": c.read_at is not None,
+                "saved": c.saved,
+                "status": statuses.get(c.concept_id, "new"),
+            }
+            for c in cards
+        ],
+        "unread": Card.objects.filter(user=request.user, read_at__isnull=True).count(),
+        "skills": {k: v for k, v in checklist.progress(knowledge.known_topic_slugs(request.user)).items() if k != "ladder"},
+    })
+
+
+@csrf_exempt
+@require_POST
+@token_required
+def card_action_view(request, pk: int):
+    card = Card.objects.filter(pk=pk, user=request.user).select_related("concept").first()
+    if card is None:
+        return _error(404, "card not found")
+    try:
+        action = json.loads(request.body or b"{}").get("action")
+    except (json.JSONDecodeError, AttributeError):
+        return _error(400, "invalid JSON")
+    if action not in CARD_ACTIONS:
+        return _error(400, f"action must be one of {sorted(CARD_ACTIONS)}")
+    if action == "read" and card.read_at is None:
+        card.read_at = timezone.now()
+        card.save(update_fields=["read_at"])
+    elif action in ("known", "mute"):
+        status = UserConcept.Status.KNOWN if action == "known" else UserConcept.Status.MUTED
+        knowledge.set_status(request.user, card.concept, status)
+    elif action in ("save", "unsave"):
+        card.saved = action == "save"
+        card.save(update_fields=["saved"])
+    return JsonResponse({"ok": True, "id": card.pk, "action": action})
+

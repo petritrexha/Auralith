@@ -24,6 +24,8 @@ class CatalogEntry:
     require: list[str] = field(default_factory=list)  # all must match too (mock mode)
     diagram: str = ""
     keywords: list[str] = field(default_factory=list)
+    pitfall: str = ""   # "Watch out" line (standard / deep depth)
+    analogy: str = ""   # everyday comparison (when the user wants analogies)
 
     def matches(self, text: str) -> bool:
         if not any(re.search(p, text, re.IGNORECASE | re.MULTILINE) for p in self.patterns):
@@ -232,6 +234,152 @@ CATALOG: list[CatalogEntry] = [
         keywords=["env", "config", "12factor"],
     ),
 ]
+
+# Visual + depth extras per concept: (diagram, pitfall, analogy). A diagram here only fills in when the
+# entry above has none. Diagrams stay tiny (≤ 6 nodes, short labels) so they read at a glance.
+VISUALS: dict[str, tuple[str, str, str]] = {
+    "flexbox-centering": (
+        "",
+        "Centering needs the container to have a height; a 0-height flex container centers nothing vertically.",
+        "Like a shelf that pushes every item to its middle, no matter how many items you put on it.",
+    ),
+    "css-grid": (
+        "graph TD\n  G[Grid container] --> C[Column tracks]\n  G --> R[Row tracks]\n  C --> I[Items snap into cells]\n  R --> I",
+        "Fixed pixel tracks break on small screens; prefer fr units and minmax() with auto-fit.",
+        "Like a spreadsheet: you define the rows and columns, the content drops into cells.",
+    ),
+    "react-usereducer": (
+        "",
+        "Never mutate state inside the reducer; always return a new object, or React won't re-render.",
+        "Like a bank teller: you hand over a slip (action) and only the teller updates the balance (state).",
+    ),
+    "react-useeffect-cleanup": (
+        "sequenceDiagram\n  participant C as Component\n  participant E as Effect\n  C->>E: mount: subscribe\n  C->>E: deps change: cleanup, then re-run\n  C->>E: unmount: cleanup",
+        "Forgetting cleanup leaks listeners and timers, and in dev Strict Mode effects run twice to expose this.",
+        "Like checking out of a hotel: before you leave (unmount) you return the key (unsubscribe).",
+    ),
+    "react-suspense": (
+        "graph LR\n  S[Suspense boundary] -->|still loading| F[Fallback UI]\n  S -->|ready| C[Real content]",
+        "One boundary around the whole page hides everything while any part loads; place boundaries close to slow parts.",
+        "Like a 'kitchen is preparing your dish' sign that stays up until the plate is ready.",
+    ),
+    "react-usememo": (
+        "graph LR\n  R[Re-render] --> D{Deps changed?}\n  D -->|no| C[Reuse cached value]\n  D -->|yes| X[Recompute]",
+        "Memoizing cheap work adds overhead; measure first, and keep the dependency array complete.",
+        "Like writing an answer on a sticky note so you don't redo the math unless the numbers change.",
+    ),
+    "jwt-refresh-rotation": (
+        "",
+        "If an old refresh token is reused, treat it as theft and revoke the whole token family.",
+        "Like a single-use subway ticket: each ride gives you a new one, and the old one stops working.",
+    ),
+    "jwt-auth": (
+        "sequenceDiagram\n  participant U as Client\n  participant A as API\n  U->>A: login\n  A-->>U: signed JWT\n  U->>A: request + Bearer JWT\n  A->>A: verify signature\n  A-->>U: data",
+        "A JWT is signed, not encrypted: anyone can read its payload, so never put secrets in it.",
+        "Like a festival wristband: staff check it's genuine at each gate without calling the ticket office.",
+    ),
+    "password-hashing": (
+        "graph LR\n  P[Password] --> H[bcrypt or argon2 + salt]\n  H --> D[(Store only the hash)]\n  L[Login attempt] --> H2[Hash again] --> C{Match?}",
+        "Fast hashes like SHA-256 are wrong for passwords; use a slow, salted algorithm built for it.",
+        "Like a meat grinder: easy to turn steak into mince, impossible to turn it back.",
+    ),
+    "cors": (
+        "sequenceDiagram\n  participant B as Browser\n  participant S as API\n  B->>S: OPTIONS preflight\n  S-->>B: Access-Control-Allow-Origin\n  B->>S: real request\n  S-->>B: response",
+        "Access-Control-Allow-Origin: * cannot be combined with cookies; list allowed origins explicitly.",
+        "Like a bouncer checking the guest list before letting a visitor from another club inside.",
+    ),
+    "rate-limiting": (
+        "graph LR\n  R[Request] --> K{Under limit?}\n  K -->|yes| H[Handle + count]\n  K -->|no| E[429 Too Many Requests]",
+        "In-memory counters only work for one process; use a shared store like Redis when you scale out.",
+        "Like a turnstile that only lets so many people through per minute.",
+    ),
+    "express-middleware": (
+        "graph LR\n  Q[Request] --> M1[Logger] --> M2[Auth] --> M3[Body parser] --> H[Route handler]",
+        "Forgetting to call next() or send a response leaves the request hanging forever.",
+        "Like an airport: check-in, security, then passport control before you reach the gate.",
+    ),
+    "promise-all": (
+        "graph LR\n  S[Start] --> A[Task A]\n  S --> B[Task B]\n  S --> C[Task C]\n  A --> J[All done]\n  B --> J\n  C --> J",
+        "Promise.all rejects as soon as one task fails; use Promise.allSettled when partial results are fine.",
+        "Like ordering coffee, a sandwich and juice at once instead of waiting for each one in turn.",
+    ),
+    "debounce": (
+        "sequenceDiagram\n  participant U as User\n  participant D as Debounce 300ms\n  participant A as API\n  U->>D: keystroke\n  U->>D: keystroke (timer resets)\n  D->>A: one call after the pause",
+        "Create the debounced function once (useMemo/useRef); recreating it every render resets the timer.",
+        "Like an elevator door that waits until people stop walking in before it closes.",
+    ),
+    "django-migrations": (
+        "graph LR\n  M[models.py change] --> MK[makemigrations] --> F[Migration file in git] --> MG[migrate] --> DB[(Database schema)]",
+        "Never edit a migration that already ran in production; add a new one instead.",
+        "Like version control for your database layout.",
+    ),
+    "ef-core-migrations": (
+        "graph LR\n  M[Entity change] --> A[dotnet ef migrations add] --> F[Migration class] --> U[database update] --> DB[(Schema)]",
+        "Review the generated Up() method: a rename can be scaffolded as drop + add, which loses data.",
+        "Like a recipe card for turning yesterday's database into today's.",
+    ),
+    "n-plus-one-queries": (
+        "graph LR\n  L[Load 50 orders] -->|N+1| Q1[1 query + 50 queries]\n  L -->|eager load| Q2[2 queries total]",
+        "It hides in templates and serializers that touch a relation inside a loop; watch query counts in tests.",
+        "Like making 50 trips to the shop for 50 items instead of one trip with a list.",
+    ),
+    "db-transactions": (
+        "graph LR\n  B[BEGIN] --> S1[Debit A] --> S2[Credit B] --> C{All ok?}\n  C -->|yes| CM[COMMIT]\n  C -->|no| RB[ROLLBACK]",
+        "Don't call slow external APIs inside a transaction: it holds locks open for the whole call.",
+        "Like a bank transfer: either both accounts change or neither does.",
+    ),
+    "db-indexes": (
+        "graph LR\n  Q[WHERE email = ?] --> I{Index on email?}\n  I -->|yes| F[Jump straight to row]\n  I -->|no| S[Scan every row]",
+        "Every index slows writes and uses space; index the columns you filter and sort on, not everything.",
+        "Like the index at the back of a book instead of reading every page.",
+    ),
+    "schema-validation": (
+        "graph LR\n  I[Untrusted input] --> V{Schema check}\n  V -->|valid| T[Typed data to your code]\n  V -->|invalid| E[400 with field errors]",
+        "Validate at the boundary (request, env, external API), then trust the typed result inside.",
+        "Like airport security: check everything once at the entrance so the inside can stay relaxed.",
+    ),
+    "docker-multi-stage": (
+        "graph LR\n  B[Build stage: SDK + deps] -->|copy only output| R[Runtime stage: slim image]\n  R --> I[Small, safer image]",
+        "Copying the whole build stage back defeats the purpose; copy only the built artifacts.",
+        "Like cooking in a full kitchen but serving only the plate, not the pots.",
+    ),
+    "github-actions": (
+        "graph LR\n  P[Push or PR] --> W[Workflow] --> J1[Install] --> J2[Test] --> J3[Deploy if main]",
+        "Secrets aren't available to PRs from forks; don't build workflows that assume they are.",
+        "Like a robot colleague who runs the same checklist on every change.",
+    ),
+    "pytest-fixtures": (
+        "graph LR\n  F[Fixture: setup] --> T1[test_a]\n  F --> T2[test_b]\n  T1 --> TD[Teardown after yield]\n  T2 --> TD",
+        "Broad-scoped fixtures (module/session) share state between tests; keep mutable fixtures function-scoped.",
+        "Like a stage crew setting the scene before each act and clearing it after.",
+    ),
+    "test-mocking": (
+        "graph LR\n  T[Test] --> C[Your code]\n  C -->|would call| R[Real API]\n  C -->|calls instead| M[Mock with canned answer]",
+        "Patch where the name is looked up, not where it's defined, or the mock never takes effect.",
+        "Like a flight simulator: real controls, fake sky.",
+    ),
+    "csrf-protection": (
+        "sequenceDiagram\n  participant B as Browser\n  participant S as Server\n  S-->>B: page + secret CSRF token\n  B->>S: POST form + token + cookie\n  S->>S: token matches session?",
+        "Exempting views from CSRF (csrf_exempt) is only safe when they don't rely on cookies for auth.",
+        "Like a ticket stub: the cookie proves who you are, the stub proves you came from the real form.",
+    ),
+    "websockets": (
+        "sequenceDiagram\n  participant C as Client\n  participant S as Server\n  C->>S: HTTP upgrade\n  S-->>C: 101 Switching Protocols\n  S-->>C: push message\n  C->>S: send message",
+        "Connections drop: build reconnect with backoff, and re-sync state after reconnecting.",
+        "Like a phone call that stays open, instead of sending a new letter for every update.",
+    ),
+    "env-config": (
+        "graph LR\n  E[.env or host settings] --> P[Process environment] --> A[App reads config at start]\n  G[git] -.never.- E",
+        "Commit a .env.example with dummy values, never the real .env.",
+        "Like keeping the house keys out of the house blueprints.",
+    ),
+}
+
+for _entry in CATALOG:
+    _diagram, _pitfall, _analogy = VISUALS.get(_entry.slug, ("", "", ""))
+    _entry.diagram = _entry.diagram or _diagram
+    _entry.pitfall = _entry.pitfall or _pitfall
+    _entry.analogy = _entry.analogy or _analogy
 
 BY_SLUG = {e.slug: e for e in CATALOG}
 
