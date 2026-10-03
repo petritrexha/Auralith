@@ -1,19 +1,36 @@
 {% extends "core/base.html" %}
 {% block content %}
 {% include "core/_manage_nav.html" %}
-<h2>Agent activity</h2>
+<div class="page-heading">
+<div>
+<div class="eyebrow">A CLEAR VIEW OF THE LOOP</div>
+<h1>Agent activity</h1>
+<p class="muted">Follow the decisions behind every learning moment.</p>
+</div>
+<span class="chip">Latest 50 sessions</span>
+</div>
 <p class="muted">Every time a coding session ends a turn, the teaching agent decides what to teach. Here is what it looked at and why.</p>
 {% for log in logs %}
 <details class="panel" style="margin-bottom:10px">
   <summary class="row">
     <b>{{ log.user.email }}</b>
-    <span class="chip">{{ log.mode }}</span><span class="chip {% if log.outcome == 'ok' %}known{% else %}seen{% endif %}">{{ log.outcome }}</span>
+    <span class="chip">{{ log.mode }}</span>
+<span class="chip {% if log.outcome == 'ok' %}known{% else %}seen{% endif %}">{{ log.outcome }}</span>
     <span class="muted">{{ log.files_count }} files · {{ log.concepts_found }} concepts considered · {{ log.cards_returned }} cards · {{ log.llm_calls }} LLM calls · {{ log.duration_ms }} ms · {{ log.created_at|timesince }} ago</span>
   </summary>
-  <table>{% for step in log.trace %}<tr>
-    <td style="width:140px"><span class="chip">{% if step.tool %}{{ step.tool }}{% else %}{{ step.type }}{% endif %}</span></td>
+  <div class="table-wrap">
+<table>{% for step in log.trace %}
+<tr>
+    <td style="width:140px">
+<span class="chip">{% if step.tool %}{{ step.tool }}{% else %}{{ step.type }}{% endif %}</span>
+</td>
     <td class="mono" style="font-size:12px">{% if step.text %}{{ step.text }}{% elif step.reason %}{{ step.reason }}{% else %}{{ step.input }}{% if step.result %} → {{ step.result }}{% endif %}{% endif %}{% if step.skipped_secret_files %}skipped secret files: {{ step.skipped_secret_files|join:", " }}{% endif %}</td>
-  </tr>{% empty %}<tr><td class="muted">No steps (skipped before the agent ran).</td></tr>{% endfor %}</table>
+  </tr>{% empty %}
+<tr>
+<td class="muted">No steps (skipped before the agent ran).</td>
+</tr>{% endfor %}</table>
+</div>
 </details>
-{% empty %}<div class="panel muted">No activity yet.</div>{% endfor %}
+{% empty %}
+<div class="panel muted">No agent activity yet. Sessions appear after a connected developer finishes a coding turn.</div>{% endfor %}
 {% endblock %}

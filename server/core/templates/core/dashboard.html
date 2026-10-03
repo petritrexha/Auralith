@@ -1,31 +1,103 @@
-{% extends "core/base.html" %}
-{% load learnloop %}
+{% extends "core/base.html" %}{% load learnloop %}
+{% block title %}Overview · LearnLoop{% endblock %}
 {% block content %}
-<h2>Your learning</h2>
-<div class="grid">
-  <div class="panel stat"><b>{{ i.surfaced }}</b><span>concepts surfaced</span></div>
-  <div class="panel stat"><b>{{ i.known }}</b><span>known</span></div>
-  <div class="panel stat"><b>{{ i.mastery_rate|pct }}</b><span>mastery rate</span></div>
-  <div class="panel stat"><b>{{ i.comprehension_debt }}</b><span>comprehension debt</span></div>
-  <div class="panel stat"><b>{{ i.streak }}🔥</b><span>day streak</span></div>
+<div class="page-heading">
+<div>
+<div class="eyebrow">YOUR LEARNING, IN THE LOOP</div>
+<h1>Keep building. Keep understanding.</h1>
+<p>Welcome back{% if user.first_name %}, {{ user.first_name }}{% endif %}. Here’s what you’re taking from your code.</p>
 </div>
-<div class="panel" style="margin-top:14px"><canvas id="perDay" height="90"></canvas></div>
-<div class="grid" style="margin-top:14px">
-  <div class="panel"><b>Keeps showing up</b>
-    <ul>{% for c in i.keeps_showing_up %}<li>{{ c.concept__name }} <span class="muted">×{{ c.seen_count }}</span></li>{% empty %}<li class="muted">Nothing yet.</li>{% endfor %}</ul></div>
-  <div class="panel"><b>Recently learned</b>
-    <ul>{% for c in i.recently_learned %}<li>{{ c.concept__name }}</li>{% empty %}<li class="muted">Mark a card "I know this" to see it here.</li>{% endfor %}</ul></div>
+<a class="btn" href="{% url 'cards' %}">Explore your feed <span aria-hidden="true">↗</span>
+</a>
 </div>
-<h3>Latest cards</h3>
-<div class="grid">{% for card in latest %}{% include "core/_card.html" %}{% empty %}<div class="panel muted">No cards yet. Go code something — we'll catch the interesting parts. (Not set up? <a href="{% url 'app-setup' %}">Setup guide</a>)</div>{% endfor %}</div>
-{{ i.cards_per_day|json_script:"per-day-data" }}
-{% endblock %}
-{% block scripts %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script>
-  const d = JSON.parse(document.getElementById("per-day-data").textContent);
-  if (window.Chart) new Chart(document.getElementById("perDay"), {type:"bar",
-    data:{labels:d.map(x=>x.date.slice(5)), datasets:[{label:"Cards per day", data:d.map(x=>x.count), backgroundColor:"#7c9cff"}]},
-    options:{plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true, ticks:{precision:0}}}}});
-</script>
+<div class="grid stats">
+<div class="panel stat">
+<span class="stat-label">Concepts surfaced <i>◇</i>
+</span>
+<b>{{ i.surfaced }}</b>
+<span class="stat-foot">Across your coding workflow</span>
+</div>
+<div class="panel stat">
+<span class="stat-label">Concepts learned <i>✓</i>
+</span>
+<b>{{ i.known }}</b>
+<span class="stat-foot positive">Understanding that stays</span>
+</div>
+<div class="panel stat">
+<span class="stat-label">Mastery rate <i>◔</i>
+</span>
+<b>{{ i.mastery_rate|pct }}</b>
+<span class="stat-foot">{{ i.comprehension_debt }} concepts still to explore</span>
+</div>
+<div class="panel stat">
+<span class="stat-label">Learning streak <i>ϟ</i>
+</span>
+<b>{{ i.streak }} <span>days</span>
+</b>
+<span class="stat-foot positive">Consecutive days with learning cards</span>
+</div>
+</div>
+<div class="dashboard-split">
+<section class="panel">
+<div class="panel-heading">
+<h3>Learning activity</h3>
+<span class="muted">Last 30 days · Cards generated</span>
+</div>{% include "core/_activity_chart.html" with activity=i.cards_per_day %}</section>
+<section class="panel">
+<div class="panel-heading">
+<h3>Concepts by category</h3>
+<span class="muted">{{ i.surfaced }} total</span>
+</div>
+<div class="category-list">{% for c in i.by_category %}
+<div class="category-item">
+<div class="row">
+<span>{{ c.category }}</span>
+<span class="mono muted">{{ c.count }}</span>
+</div>
+<div class="meter">
+<span style="--width:{% widthratio c.count i.surfaced 100 %}%">
+</span>
+</div>
+</div>{% empty %}<p class="empty-inline">Your categories will appear with your first learning cards.</p>{% endfor %}</div>
+</section>
+</div>
+<div class="section-heading">
+<h3>Fresh from your code <span class="muted small">/ Recent cards</span>
+</h3>
+<a href="{% url 'cards' %}">View all cards →</a>
+</div>
+<div class="grid card-grid">{% for card in latest %}{% include "core/_card.html" %}{% empty %}{% url 'app-setup' as setup_url %}{% include "core/_empty.html" with empty_title="Your first insight is one connection away" empty_text="Connect Claude Code, build something, and find the concepts behind it here." empty_url=setup_url %}{% endfor %}</div>
+<div class="dashboard-split">
+<section class="panel">
+<div class="panel-heading">
+<h3>Keeps coming up</h3>
+<span class="muted">An opportunity to go deeper</span>
+</div>
+<ul class="insight-list">{% for c in i.keeps_showing_up %}
+<li>
+<a href="{% url 'cards' %}?q={{ c.concept__name|urlencode }}">{{ c.concept__name }}</a>
+<span class="chip seen">{{ c.seen_count }} exposures</span>
+</li>{% empty %}
+<li class="muted">No repeated concepts waiting for your attention.</li>{% endfor %}</ul>
+</section>
+<section class="panel">
+<div class="panel-heading">
+<h3>Recently mastered</h3>
+<span class="chip known">Your wins</span>
+</div>
+<ul class="insight-list">{% for c in i.recently_learned %}
+<li>
+<a href="{% url 'cards' %}?q={{ c.concept__name|urlencode }}">{{ c.concept__name }}</a>
+<span class="muted">✓</span>
+</li>{% empty %}
+<li class="muted">Mark a card “I know this” to celebrate your progress here.</li>{% endfor %}</ul>
+</section>
+</div>
+<div class="row small muted" style="margin-top:22px">
+<span>{{ i.cards_total }} cards in your library</span>
+<span>·</span>
+<a href="{% url 'cards' %}?status=unread">{{ i.unread_cards }} unread</a>
+<span>·</span>
+<span>{{ i.muted }} concepts muted</span>
+</div>
 {% endblock %}

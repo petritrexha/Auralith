@@ -1,18 +1,41 @@
-{% extends "core/base.html" %}
-{% block content %}
-<h2>Knowledge profile</h2>
-<p class="row">{% for s, n in counts.items %}<span class="chip {{ s }}">{{ s }} · {{ n }}</span>{% endfor %}</p>
+{% extends "core/base.html" %}{% block title %}Concept library · LearnLoop{% endblock %}{% block content %}
+<div class="page-heading">
+<div>
+<div class="eyebrow">A MAP OF WHAT YOU KNOW</div>
+<h1>Concept library</h1>
+<p>Every concept you’ve encountered, and where you stand with it.</p>
+</div>
+<a class="btn ghost" href="{% url 'cards' %}">Explore learning cards ↗</a>
+</div>
+<div class="row" style="margin-bottom:28px">{% for s, n in counts.items %}<span class="chip {{ s }}">{{ s }} · {{ n }}</span>{% endfor %}</div>
+<p class="muted small">New: just surfaced · Seen: encountered again · Known: marked as understood · Muted: no more explanations</p>
 {% for category, items in grouped.items %}
-<div class="panel" style="margin-bottom:12px"><b>{{ category }}</b>
-  <table><tr><th>Concept</th><th>Status</th><th>Seen</th><th>Last seen</th><th></th></tr>
-  {% for uc in items %}<tr>
-    <td>{{ uc.concept.name }}</td><td><span class="chip {{ uc.status }}">{{ uc.status }}</span></td>
-    <td>{{ uc.seen_count }}</td><td class="muted">{{ uc.last_seen|timesince }} ago</td>
-    <td><form method="post" action="{% url 'concept-action' uc.concept.slug %}" class="row">{% csrf_token %}
-      {% if uc.status != "known" %}<button name="status" value="known">Known</button>{% endif %}
-      {% if uc.status != "muted" %}<button class="ghost" name="status" value="muted">Mute</button>{% endif %}
-      {% if uc.status == "known" or uc.status == "muted" %}<button class="ghost" name="status" value="seen">Reset</button>{% endif %}
-    </form></td></tr>{% endfor %}
-  </table></div>
-{% empty %}<div class="panel muted">No concepts yet. Go code something — we'll catch the interesting parts.</div>{% endfor %}
-{% endblock %}
+<section class="panel" style="margin-bottom:20px">
+<div class="panel-heading">
+<h3>{{ category }}</h3>
+<span class="muted">{{ items|length }} concepts</span>
+</div>
+<div class="table-wrap">
+<table>
+<tr>
+<th scope="col">Concept</th>
+<th scope="col">Status</th>
+<th scope="col">Exposures</th>
+<th scope="col">Last seen</th>
+<th scope="col">Update status</th>
+</tr>{% for uc in items %}
+<tr>
+<td>
+<a href="{% url 'cards' %}?q={{ uc.concept.name|urlencode }}">{{ uc.concept.name }}</a>
+</td>
+<td>
+<span class="chip {{ uc.status }}">{{ uc.get_status_display }}</span>
+</td>
+<td class="mono">{{ uc.seen_count }}</td>
+<td class="muted">{{ uc.last_seen|timesince }} ago</td>
+<td>
+<form method="post" action="{% url 'concept-action' uc.concept.slug %}" class="row">{% csrf_token %}{% if uc.status != "known" %}<button name="status" value="known" aria-label="Mark {{ uc.concept.name }} as known">Known</button>{% endif %}{% if uc.status != "muted" %}<button class="ghost" name="status" value="muted" aria-label="Mute {{ uc.concept.name }}">Mute</button>{% endif %}{% if uc.status == "known" or uc.status == "muted" %}<button class="ghost" name="status" value="seen" aria-label="Reset {{ uc.concept.name }} to seen">Reset</button>{% endif %}</form>
+</td>
+</tr>{% endfor %}</table>
+</div>
+</section>{% empty %}{% url 'app-setup' as setup_url %}{% include "core/_empty.html" with empty_title="A library built from your own work" empty_text="Connect your coding workflow. Your concepts and their learning status will appear here." empty_url=setup_url %}{% endfor %}{% endblock %}

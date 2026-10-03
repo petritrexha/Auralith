@@ -1,7 +1,14 @@
 {% extends "core/base.html" %}
 {% block content %}
 {% include "core/_manage_nav.html" %}
-<h2>Create account</h2>
+<div class="page-heading">
+<div>
+<div class="eyebrow">GROW YOUR LEARNING WORKSPACE</div>
+<h1>Invite someone into the loop.</h1>
+<p class="muted">Create their account, then share their temporary credentials securely.</p>
+</div>
+<a class="btn ghost" href="{% url 'manage-users' %}">← Back to people</a>
+</div>
 {% if created %}
 <div class="secret" style="margin-bottom:16px">
   <b>Account created for {{ created.user.email }}.</b> Share these securely — they're shown only once.

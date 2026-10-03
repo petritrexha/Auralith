@@ -8,7 +8,8 @@
   {{ report.body_markdown|markdown_lite }}
 </div>
 {% if report.trace %}
-<details class="panel" style="margin-top:14px"><summary>Agent trace ({{ report.trace|length }} steps)</summary>
+<details class="panel" style="margin-top:14px">
+<summary>Agent trace ({{ report.trace|length }} steps)</summary>
   <pre>{% for step in report.trace %}{{ step }}
 {% endfor %}</pre></details>
 {% endif %}

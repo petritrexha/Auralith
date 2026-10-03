@@ -22,7 +22,7 @@ learnloop/
         ├── agent/                    ← analyzer (teaching agent), reporter (manager agent), catalog, llm loop
         ├── services/                 ← knowledge profile, insights, accounts, secret scrubbing
         ├── api.py                    ← /api/v1/ping, /api/v1/analyze
-        ├── views.py + templates/     ← basic pages (placeholder styling, for the UI team to restyle)
+        ├── views.py + templates/     ← server-rendered learning workspace
         └── tests.py
 ```
 
@@ -108,11 +108,17 @@ For local plugin development: `claude --plugin-dir ./plugin`. Set `LEARNLOOP_DEB
 | `GET /app/insights.json` | Member insights (session auth), for dashboard charts |
 | `GET /manage/insights.json?days=30` | Org insights (admin session), for dashboard charts |
 
-## Notes for the UI team
+## Frontend
 
-- Every page is a plain Django template under `server/core/templates/core/` with placeholder dark styling in `base.html`. Restyle freely; the context variables are what matter.
-- All numbers come from `core/services/insights.py` (`member_insights`, `org_insights`, `comprehension_hotspots`, `needs_attention`).
-- Not built yet: the animated landing hero, HTMX polish and empty-state illustrations.
+The dark-first interface remains server-rendered Django; no Node build is required.
+
+- Shared shell and components: `server/core/templates/core/`. Design tokens and responsive styles: `server/core/static/core/app.css`. Navigation, command search (Ctrl/Cmd+K), clipboard feedback, and connection checks: `app.js`.
+- Decorative effects live in `motion.css` and `motion.js`: ambient mint glows, cursor lighting, hero depth, viewport entrances, and chart transitions. The Motion toggle remembers your preference; system reduced-motion settings take precedence. Effects pause in hidden tabs, and page content stays usable without JavaScript. No animation library or build step is required.
+- Dashboard charts render locally with accessible text values. Mermaid diagrams use the existing CDN dependency, with readable source when previews are unavailable.
+- All metrics use existing insights data. The admin mastery chart uses snapshots saved in team briefings, not a continuous daily history.
+- POST forms preserve Django CSRF protection and existing action names. The only view changes supply saved reports to the dashboard and render a styled 403 page for non-admin access.
+- Standard error templates appear with `DJANGO_DEBUG=0`. Keep serving collected static assets in production as usual.
+- Run `python manage.py test core` for backend and frontend integration checks. See `FRONTEND_PLAN.md` for the route map and implementation plan.
 
 ## Security checklist
 

@@ -13,7 +13,7 @@ from django.contrib.auth.forms import SetPasswordForm
 from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
-from django.http import HttpResponseForbidden, JsonResponse
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -32,7 +32,7 @@ def staff_required(view):
     @login_required
     def wrapper(request, *args, **kwargs):
         if not request.user.is_staff:
-            return HttpResponseForbidden("Admins only.")
+            return render(request, "403.html", status=403)
         return view(request, *args, **kwargs)
 
     return wrapper
@@ -209,6 +209,7 @@ def user_settings(request):
 def manage_home(request):
     return render(request, "core/manage_home.html", {
         "o": insights.org_insights(), "report": TeamReport.objects.first(), "ai_mode": ai_mode(),
+        "mastery_history": TeamReport.objects.filter(data__has_key="org_mastery_rate")[:8],
     })
 
 

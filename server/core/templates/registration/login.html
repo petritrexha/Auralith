@@ -1,15 +1,28 @@
 {% extends "core/base.html" %}
 {% block title %}Log in · LearnLoop{% endblock %}
 {% block content %}
-<div class="panel" style="max-width:420px;margin:40px auto">
-  <h2 style="margin-top:0">Log in</h2>
-  <form method="post">{% csrf_token %}
-    {{ form.non_field_errors }}
-    <p><label for="id_username">Email</label>{{ form.username }}</p>
-    <p><label for="id_password">Password</label>{{ form.password }}</p>
-    <input type="hidden" name="next" value="{{ next }}">
-    <button>Log in</button>
-  </form>
-  <p class="muted" style="font-size:13px">No account? Ask your admin.</p>
-</div>
-{% endblock %}
+<div class="auth-layout">
+<section class="auth-story">
+<span class="brand-mark" aria-hidden="true">
+</span>
+<div class="eyebrow">YOUR NEXT LEARNING MOMENT</div>
+<h1>Pick up where<br>your curiosity<br>
+<span>left off.</span>
+</h1>
+<p>A personal space for the concepts in your code, and the understanding you build along the way.</p>
+<p class="mono small">BUILD → NOTICE → UNDERSTAND → REPEAT</p>
+</section>
+<section class="panel auth-form">
+<h2>Welcome back</h2>
+<p class="muted">Log in to your LearnLoop workspace.</p>
+<form method="post">{% csrf_token %}{{ form.non_field_errors }}<p>
+<label for="id_username">Work email</label>{{ form.username }}{{ form.username.errors }}</p>
+<p>
+<label for="id_password">Password</label>{{ form.password }}{{ form.password.errors }}</p>
+<input type="hidden" name="next" value="{{ next }}">
+<button data-loading="Signing in…">Log in to workspace <span aria-hidden="true">→</span>
+</button>
+</form>
+<p class="muted">Need access? Ask your team administrator.</p>
+</section>
+</div>{% endblock %}

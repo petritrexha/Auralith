@@ -7,6 +7,14 @@ from django.utils.safestring import mark_safe
 register = template.Library()
 
 
+@register.filter
+def chart_bars(rows):
+    """Present existing daily counts on a common scale without client dependencies."""
+    rows = list(rows or [])
+    maximum = max((row["count"] for row in rows), default=0) or 1
+    return [{**row, "height": round(row["count"] / maximum * 100)} for row in rows]
+
+
 def _inline(text: str) -> str:
     text = re.sub(r"`([^`]+)`", r"<code>\1</code>", text)
     text = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", text)
